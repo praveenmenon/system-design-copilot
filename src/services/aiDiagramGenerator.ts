@@ -34,14 +34,137 @@ The JSON should have this exact structure:
     },
     "apis": [
       {
-        "endpoint": "API endpoint path",
-        "description": "What this endpoint does"
+        "endpoint": "/api/v1/resource",
+        "method": "POST",
+        "description": "Brief description of what this endpoint does",
+        "requestType": "JSON",
+        "responseType": "JSON",
+        "requestBody": {
+          "example": {
+            "field1": "string",
+            "field2": "number",
+            "nested": {
+              "subField": "value"
+            }
+          },
+          "schema": "Brief description of request structure"
+        },
+        "responseBody": {
+          "success": {
+            "example": {
+              "id": "string",
+              "status": "success",
+              "data": {}
+            },
+            "schema": "Description of successful response"
+          },
+          "error": {
+            "example": {
+              "error": "string",
+              "code": "ERROR_CODE",
+              "message": "Error description"
+            },
+            "schema": "Description of error response"
+          }
+        },
+        "statusCodes": {
+          "200": "Success - Resource created/retrieved",
+          "400": "Bad Request - Invalid input",
+          "401": "Unauthorized - Authentication required",
+          "403": "Forbidden - Insufficient permissions",
+          "404": "Not Found - Resource doesn't exist",
+          "500": "Internal Server Error - Server error"
+        },
+        "headers": {
+          "required": ["Content-Type: application/json", "Authorization: Bearer token"],
+          "optional": ["X-Request-ID: uuid"]
+        },
+        "queryParams": {
+          "limit": "Number of items to return (default: 10, max: 100)",
+          "offset": "Number of items to skip for pagination (default: 0)",
+          "sort": "Sort field and direction (e.g., 'createdAt:desc', 'name:asc')",
+          "filter": "Filter criteria using field:value syntax (optional)",
+          "search": "Search term for text fields (optional)",
+          "include": "Related resources to include (comma-separated)",
+          "fields": "Specific fields to return (comma-separated, default: all)",
+          "format": "Response format (json/xml/csv, default: json)"
+        },
+        "pathParams": {
+          "id": "Primary resource identifier (UUID/string/number)",
+          "parentId": "Parent resource identifier (UUID/string)",
+          "version": "API version or resource version (v1/v2 or semantic version)"
+        },
+        "authentication": "Bearer token, API key, or OAuth2",
+        "rateLimit": "100 requests per minute per user",
+        "caching": "Response cached for 5 minutes",
+        "notes": ["Additional implementation notes", "Edge cases to consider"]
       }
     ],
     "database": {
-      "choice": "Database technology chosen",
-      "rationale": "Why this database was selected",
-      "schema": "Optional schema design"
+      "choice": "Database technology chosen (e.g., PostgreSQL, MySQL, DynamoDB, MongoDB)",
+      "rationale": "Why this database was selected over alternatives",
+      "schema": {
+        "relational": {
+          "tables": [
+            {
+              "name": "table_name",
+              "columns": [
+                {
+                  "name": "column_name",
+                  "type": "data_type",
+                  "constraints": ["PRIMARY KEY", "FOREIGN KEY", "NOT NULL", "UNIQUE"],
+                  "references": "other_table.column (for FK)"
+                }
+              ],
+              "indexes": ["index descriptions and rationale"],
+              "capacity": {
+                "recordsPerYear": "estimated records per year",
+                "bytesPerRecord": "estimated bytes per record",
+                "totalStoragePerYear": "calculated storage per year",
+                "growthProjection": "1-5 year growth estimate including indexes and redundancy"
+              }
+            }
+          ]
+        },
+        "nosql": {
+          "tables": [
+            {
+              "name": "table_name",
+              "partitionKey": "primary partition key",
+              "sortKey": "optional sort key",
+              "attributes": [
+                {
+                  "name": "attribute_name",
+                  "type": "data_type",
+                  "description": "purpose of this attribute"
+                }
+              ],
+              "gsi": [
+                {
+                  "name": "GSI name",
+                  "partitionKey": "GSI partition key",
+                  "sortKey": "optional GSI sort key",
+                  "purpose": "what queries this GSI enables"
+                }
+              ],
+              "lsi": [
+                {
+                  "name": "LSI name", 
+                  "sortKey": "LSI sort key",
+                  "purpose": "what queries this LSI enables"
+                }
+              ],
+              "capacity": {
+                "recordsPerYear": "estimated records per year (e.g., 100M)",
+                "bytesPerRecord": "estimated bytes per record (e.g., 1KB)",
+                "totalStoragePerYear": "calculated storage per year (e.g., 100GB/year)",
+                "indexOverhead": "additional storage for GSI/LSI (e.g., 50% overhead)",
+                "growthProjection": "1-5 year growth estimate with redundancy factor"
+              }
+            }
+          ]
+        }
+      }
     },
     "challenges": [
       {
@@ -77,19 +200,67 @@ Available component types:
 - load-balancer: Load balancers
 - web-server: Web/frontend servers
 - api-server: API/backend servers
-- database: Databases
-- cache: Caching systems (Redis, Memcached)
+- database: Databases (will render as ellipse)
+- cache: Caching systems like Redis, Memcached (will render as diamond)
 - queue: Message queues (RabbitMQ, Kafka)
 - cdn: Content delivery networks
 - service: Microservices or general services
 
-Position components logically:
-- Users typically on the left (x: 50-100)
-- Load balancers and CDNs near the front (x: 200-300)
-- Web servers in the middle (x: 350-500)
-- Backend services and APIs (x: 500-650)
-- Databases and storage on the right (x: 650+)
-- Spread vertically (y: 50-400) to avoid overlap
+For connections:
+- Use bidirectional labels like "Request/Response" or "Read/Write" for two-way data flow
+- Include specific operation labels like "POST /api/users", "GET /api/posts", "Cache lookup", "DB query"
+- For real-time connections use labels like "WebSocket", "Server-Sent Events", "Pub/Sub"
+
+For API endpoints:
+- ALWAYS include both pathParams and queryParams for realistic APIs
+- PathParams: Use for resource identifiers (e.g., {userId}, {orderId}, {messageId})
+- QueryParams: Use for filtering, pagination, sorting, formatting (e.g., limit, offset, sort, filter)
+- Include comprehensive examples: pagination, search, filtering, includes, field selection
+- Show realistic parameter combinations that developers would actually use
+
+Position components with excellent spacing and layered architecture:
+
+HORIZONTAL LAYERS (left to right):
+- Layer 1 - Users/Clients: x: 50-120
+- Layer 2 - Entry Points: x: 300-400 (Load Balancers, CDN, API Gateways)
+- Layer 3 - Application Layer: x: 600-700 (Web Servers, Services)
+- Layer 4 - Business Logic: x: 900-1000 (Microservices, APIs)
+- Layer 5 - Data Layer: x: 1200+ (Databases, Caches, Queues)
+
+VERTICAL DISTRIBUTION:
+- Use full vertical space: y: 50-600
+- Minimum 200px vertical gaps between components in same layer
+- Stagger components vertically to create clean architectural layers
+- Example Layer 3 positions: y: 100, 320, 540 (for 3 services)
+- Example Layer 5 positions: y: 80, 280, 480 (for 3 databases)
+
+SPACING RULES:
+- Minimum 300px horizontal distance between layers
+- Minimum 200px vertical distance between components  
+- Spread components across multiple rows, not in single horizontal line
+- Create clear visual separation between architectural tiers
+
+LAYOUT EXAMPLES:
+For a typical 3-tier architecture:
+- Users: (80, 300)
+- Load Balancer: (350, 300) 
+- Web Server 1: (650, 200)
+- Web Server 2: (650, 400)
+- API Service 1: (950, 150)
+- API Service 2: (950, 350)
+- API Service 3: (950, 550)
+- Database 1: (1250, 200)
+- Database 2: (1250, 450)
+- Cache: (1250, 350)
+
+For database analysis:
+- Always provide detailed capacity calculations
+- For relational databases: include complete schema with PKs, FKs, indexes
+- For NoSQL (prefer DynamoDB): show partition/sort keys, GSIs, LSIs
+- Calculate realistic storage: records/year × bytes/record = total storage
+- Factor in index overhead (typically 20-50% additional storage)
+- Include 1-5 year growth projections with redundancy considerations
+- Example calculation: 100M records × 1KB = 100GB/year base + 50GB indexes = 150GB/year × 5 years × 2 (redundancy) = 1.5TB total
 
 Respond with ONLY the JSON object, no other text.`
 

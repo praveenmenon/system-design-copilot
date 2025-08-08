@@ -32,11 +32,283 @@ const analysisTemplates = {
       bandwidth: "10Gbps peak"
     },
     apis: [
-      { endpoint: "POST /api/auth/login", description: "User authentication" },
-      { endpoint: "GET /api/rooms", description: "List user's chat rooms" },
-      { endpoint: "POST /api/rooms/{id}/messages", description: "Send message" },
-      { endpoint: "GET /api/rooms/{id}/messages", description: "Get message history" },
-      { endpoint: "WebSocket /ws/rooms/{id}", description: "Real-time message stream" }
+      {
+        endpoint: "/api/auth/login",
+        method: "POST",
+        description: "Authenticate user and return JWT token",
+        requestType: "JSON",
+        responseType: "JSON",
+        requestBody: {
+          example: {
+            email: "user@example.com",
+            password: "securePassword123"
+          },
+          schema: "User credentials for authentication"
+        },
+        responseBody: {
+          success: {
+            example: {
+              token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              user: {
+                id: "uuid-123",
+                email: "user@example.com",
+                username: "john_doe"
+              },
+              expires_in: 3600
+            },
+            schema: "JWT token with user information"
+          },
+          error: {
+            example: {
+              error: "INVALID_CREDENTIALS",
+              message: "Email or password is incorrect"
+            },
+            schema: "Authentication error details"
+          }
+        },
+        statusCodes: {
+          "200": "Success - User authenticated",
+          "400": "Bad Request - Missing credentials",
+          "401": "Unauthorized - Invalid credentials",
+          "429": "Too Many Requests - Rate limit exceeded"
+        },
+        headers: {
+          required: ["Content-Type: application/json"],
+          optional: ["X-Request-ID: uuid"]
+        },
+        authentication: "None required for login endpoint",
+        rateLimit: "5 requests per minute per IP",
+        notes: ["Passwords must be hashed with bcrypt", "Tokens expire after 1 hour"]
+      },
+      {
+        endpoint: "/api/rooms/{roomId}/messages",
+        method: "POST",
+        description: "Send a message to a chat room",
+        requestType: "JSON",
+        responseType: "JSON",
+        requestBody: {
+          example: {
+            content: "Hello everyone!",
+            type: "text",
+            replyTo: "msg-uuid-456"
+          },
+          schema: "Message content with optional reply reference"
+        },
+        responseBody: {
+          success: {
+            example: {
+              id: "msg-uuid-789",
+              content: "Hello everyone!",
+              type: "text",
+              userId: "user-uuid-123",
+              roomId: "room-uuid-456",
+              timestamp: "2024-01-15T10:30:00Z",
+              replyTo: "msg-uuid-456"
+            },
+            schema: "Complete message object with metadata"
+          },
+          error: {
+            example: {
+              error: "MESSAGE_TOO_LONG",
+              code: "E001",
+              message: "Message exceeds 2000 character limit"
+            },
+            schema: "Message validation error"
+          }
+        },
+        statusCodes: {
+          "201": "Created - Message sent successfully",
+          "400": "Bad Request - Invalid message format",
+          "401": "Unauthorized - Authentication required",
+          "403": "Forbidden - Not a room member",
+          "404": "Not Found - Room doesn't exist",
+          "413": "Payload Too Large - Message too long"
+        },
+        headers: {
+          required: ["Content-Type: application/json", "Authorization: Bearer {token}"],
+          optional: ["X-Request-ID: uuid"]
+        },
+        pathParams: {
+          roomId: "Chat room identifier (UUID)"
+        },
+        authentication: "Bearer JWT token",
+        rateLimit: "100 messages per minute per user",
+        notes: ["Messages are broadcast via WebSocket", "HTML content is sanitized"]
+      },
+      {
+        endpoint: "/api/rooms/{roomId}/messages",
+        method: "GET",
+        description: "Retrieve message history for a chat room",
+        requestType: "Query Parameters",
+        responseType: "JSON",
+        responseBody: {
+          success: {
+            example: {
+              messages: [
+                {
+                  id: "msg-uuid-789",
+                  content: "Hello everyone!",
+                  userId: "user-uuid-123",
+                  username: "john_doe",
+                  timestamp: "2024-01-15T10:30:00Z",
+                  type: "text"
+                }
+              ],
+              pagination: {
+                limit: 50,
+                offset: 0,
+                total: 1247,
+                hasMore: true
+              }
+            },
+            schema: "Paginated list of messages with user info"
+          }
+        },
+        statusCodes: {
+          "200": "Success - Messages retrieved",
+          "401": "Unauthorized - Authentication required",
+          "403": "Forbidden - Not a room member",
+          "404": "Not Found - Room doesn't exist"
+        },
+        headers: {
+          required: ["Authorization: Bearer {token}"]
+        },
+        pathParams: {
+          roomId: "Chat room identifier (UUID)"
+        },
+        queryParams: {
+          limit: "Number of messages to return (default: 50, max: 100)",
+          offset: "Number of messages to skip (default: 0)",
+          since: "ISO timestamp - only return messages after this time"
+        },
+        authentication: "Bearer JWT token",
+        rateLimit: "1000 requests per hour per user",
+        caching: "Response cached for 30 seconds"
+      },
+      {
+        endpoint: "/api/users/{userId}/rooms/{roomId}/messages/{messageId}",
+        method: "PUT",
+        description: "Update or edit a specific message in a room",
+        requestType: "JSON",
+        responseType: "JSON",
+        requestBody: {
+          example: {
+            content: "Updated message content",
+            editReason: "typo correction"
+          },
+          schema: "Message update with optional edit reason"
+        },
+        responseBody: {
+          success: {
+            example: {
+              id: "msg-uuid-789",
+              content: "Updated message content",
+              userId: "user-uuid-123",
+              roomId: "room-uuid-456",
+              originalContent: "Hello everyone!",
+              editedAt: "2024-01-15T10:35:00Z",
+              editReason: "typo correction",
+              version: 2
+            },
+            schema: "Updated message with edit history"
+          },
+          error: {
+            example: {
+              error: "EDIT_WINDOW_EXPIRED",
+              code: "E003",
+              message: "Messages can only be edited within 15 minutes"
+            },
+            schema: "Edit validation error"
+          }
+        },
+        statusCodes: {
+          "200": "Success - Message updated",
+          "400": "Bad Request - Invalid content",
+          "401": "Unauthorized - Authentication required",
+          "403": "Forbidden - Not message author or admin",
+          "404": "Not Found - Message/room doesn't exist",
+          "409": "Conflict - Edit window expired"
+        },
+        headers: {
+          required: ["Content-Type: application/json", "Authorization: Bearer {token}"],
+          optional: ["X-Request-ID: uuid", "If-Match: {version}"]
+        },
+        pathParams: {
+          userId: "User identifier (UUID) - must match authenticated user",
+          roomId: "Chat room identifier (UUID)",
+          messageId: "Message identifier (UUID) to update"
+        },
+        queryParams: {
+          notify: "Send notification to room members (true/false, default: true)",
+          version: "Expected message version for optimistic locking (optional)",
+          reason: "Edit reason category (typo|correction|clarification, optional)"
+        },
+        authentication: "Bearer JWT token with message.edit permission",
+        rateLimit: "20 edits per hour per user",
+        notes: [
+          "Messages can only be edited within 15 minutes of creation",
+          "Edit history is preserved for audit purposes",
+          "Large content changes may require admin approval"
+        ]
+      },
+      {
+        endpoint: "/api/users/{userId}/presence",
+        method: "PATCH",
+        description: "Update user presence status and activity",
+        requestType: "JSON",
+        responseType: "JSON",
+        requestBody: {
+          example: {
+            status: "online",
+            customMessage: "Working on project X",
+            activity: {
+              type: "typing",
+              roomId: "room-uuid-456"
+            }
+          },
+          schema: "Presence status with optional custom message and activity"
+        },
+        responseBody: {
+          success: {
+            example: {
+              userId: "user-uuid-123",
+              status: "online",
+              customMessage: "Working on project X",
+              lastSeen: "2024-01-15T10:40:00Z",
+              activity: {
+                type: "typing",
+                roomId: "room-uuid-456",
+                updatedAt: "2024-01-15T10:40:15Z"
+              }
+            },
+            schema: "Updated presence information with timestamps"
+          }
+        },
+        statusCodes: {
+          "200": "Success - Presence updated",
+          "400": "Bad Request - Invalid status value",
+          "401": "Unauthorized - Authentication required",
+          "403": "Forbidden - Cannot update other user's presence"
+        },
+        headers: {
+          required: ["Content-Type: application/json", "Authorization: Bearer {token}"]
+        },
+        pathParams: {
+          userId: "User identifier (UUID) - must match authenticated user"
+        },
+        queryParams: {
+          broadcast: "Broadcast presence change to user's rooms (true/false, default: true)",
+          ttl: "Presence timeout in seconds (default: 300, max: 3600)",
+          includeActivity: "Include detailed activity info in response (true/false, default: false)"
+        },
+        authentication: "Bearer JWT token with presence.update permission",
+        rateLimit: "60 updates per minute per user",
+        caching: "Presence cached for 30 seconds",
+        notes: [
+          "Presence automatically expires after TTL period",
+          "Activity updates are rate-limited separately"
+        ]
+      }
     ],
     database: {
       choice: "PostgreSQL + Redis + MongoDB",
@@ -119,9 +391,160 @@ const analysisTemplates = {
       bandwidth: "5Gbps peak"
     },
     apis: [
-      { endpoint: "POST /api/shorten", description: "Create short URL" },
-      { endpoint: "GET /{shortCode}", description: "Redirect to original URL" },
-      { endpoint: "GET /api/analytics/{shortCode}", description: "Get URL statistics" }
+      {
+        endpoint: "/api/v1/urls",
+        method: "POST",
+        description: "Create a shortened URL with optional customization",
+        requestType: "JSON",
+        responseType: "JSON",
+        requestBody: {
+          example: {
+            originalUrl: "https://www.example.com/very/long/path/to/resource?param1=value1&param2=value2",
+            customCode: "my-link",
+            expiresAt: "2024-12-31T23:59:59Z",
+            description: "Link to project documentation"
+          },
+          schema: "URL shortening request with optional custom code and expiration"
+        },
+        responseBody: {
+          success: {
+            example: {
+              id: "url-uuid-123",
+              shortCode: "abc123",
+              shortUrl: "https://short.ly/abc123",
+              originalUrl: "https://www.example.com/very/long/path/to/resource?param1=value1&param2=value2",
+              createdAt: "2024-01-15T10:00:00Z",
+              expiresAt: "2024-12-31T23:59:59Z",
+              clickCount: 0
+            },
+            schema: "Created short URL with metadata"
+          },
+          error: {
+            example: {
+              error: "CUSTOM_CODE_TAKEN",
+              code: "E001",
+              message: "The custom code 'my-link' is already in use"
+            },
+            schema: "URL creation error details"
+          }
+        },
+        statusCodes: {
+          "201": "Created - Short URL generated successfully",
+          "400": "Bad Request - Invalid URL or parameters",
+          "401": "Unauthorized - API key required",
+          "409": "Conflict - Custom code already exists",
+          "429": "Too Many Requests - Rate limit exceeded"
+        },
+        headers: {
+          required: ["Content-Type: application/json"],
+          optional: ["Authorization: Bearer {token}", "X-Request-ID: uuid"]
+        },
+        queryParams: {
+          domain: "Custom domain for short URL (default: short.ly)",
+          trackClicks: "Enable click tracking (true/false, default: true)",
+          generateQR: "Generate QR code (true/false, default: false)"
+        },
+        authentication: "API key or Bearer token (optional for anonymous URLs)",
+        rateLimit: "100 URLs per hour per IP (1000 with authentication)",
+        notes: ["URLs without authentication expire after 30 days", "Custom codes must be 3-50 characters"]
+      },
+      {
+        endpoint: "/{shortCode}",
+        method: "GET",
+        description: "Redirect to original URL and track click analytics",
+        requestType: "None",
+        responseType: "HTTP Redirect",
+        responseBody: {
+          success: {
+            example: "HTTP 302 Redirect to original URL",
+            schema: "Browser redirect with tracking"
+          },
+          error: {
+            example: {
+              error: "URL_NOT_FOUND",
+              message: "The short URL does not exist or has expired"
+            },
+            schema: "URL not found error page"
+          }
+        },
+        statusCodes: {
+          "302": "Found - Redirecting to original URL",
+          "404": "Not Found - Short URL doesn't exist",
+          "410": "Gone - URL has expired",
+          "429": "Too Many Requests - Rate limit exceeded"
+        },
+        pathParams: {
+          shortCode: "Short URL identifier (3-50 characters, alphanumeric)"
+        },
+        queryParams: {
+          preview: "Show preview page instead of redirecting (true/false, default: false)",
+          format: "Response format for preview (html/json, default: html)",
+          utm_source: "UTM tracking parameter to append to destination URL",
+          utm_medium: "UTM medium parameter to append",
+          utm_campaign: "UTM campaign parameter to append"
+        },
+        rateLimit: "1000 redirects per minute per IP",
+        caching: "Short URL mappings cached for 5 minutes",
+        notes: ["Click analytics recorded asynchronously", "Malicious URLs are blocked"]
+      },
+      {
+        endpoint: "/api/v1/analytics/{shortCode}/stats",
+        method: "GET",
+        description: "Get detailed analytics for a shortened URL",
+        requestType: "Query Parameters",
+        responseType: "JSON",
+        responseBody: {
+          success: {
+            example: {
+              shortCode: "abc123",
+              originalUrl: "https://www.example.com/page",
+              totalClicks: 1247,
+              uniqueClicks: 892,
+              clicksByDate: [
+                { date: "2024-01-15", clicks: 45 },
+                { date: "2024-01-16", clicks: 67 }
+              ],
+              topCountries: [
+                { country: "US", clicks: 523 },
+                { country: "UK", clicks: 234 }
+              ],
+              topReferrers: [
+                { referrer: "google.com", clicks: 456 },
+                { referrer: "twitter.com", clicks: 234 }
+              ],
+              browserStats: [
+                { browser: "Chrome", clicks: 789 },
+                { browser: "Safari", clicks: 234 }
+              ]
+            },
+            schema: "Comprehensive click analytics with breakdowns"
+          }
+        },
+        statusCodes: {
+          "200": "Success - Analytics retrieved",
+          "401": "Unauthorized - Authentication required",
+          "403": "Forbidden - Not URL owner",
+          "404": "Not Found - Short URL doesn't exist"
+        },
+        headers: {
+          required: ["Authorization: Bearer {token}"]
+        },
+        pathParams: {
+          shortCode: "Short URL identifier to get analytics for"
+        },
+        queryParams: {
+          period: "Time period for analytics (day/week/month/year/all, default: month)",
+          startDate: "Start date for custom period (ISO 8601 format)",
+          endDate: "End date for custom period (ISO 8601 format)",
+          groupBy: "Group results by (date/country/referrer/browser, default: date)",
+          limit: "Maximum number of results per category (default: 10, max: 100)",
+          timezone: "Timezone for date grouping (default: UTC)"
+        },
+        authentication: "Bearer token with analytics.read permission",
+        rateLimit: "300 requests per hour per user",
+        caching: "Analytics cached for 1 hour",
+        notes: ["Real-time data may have 5-minute delay", "Historical data retained for 2 years"]
+      }
     ],
     database: {
       choice: "NoSQL (DynamoDB/Cassandra) + Redis",
@@ -159,16 +582,16 @@ const analysisTemplates = {
 const componentTemplates = {
   'chat-app': {
     components: [
-      { id: 'user', type: 'user', label: 'Users', x: 50, y: 150, details: 'Mobile/Web Clients' },
-      { id: 'cdn', type: 'cdn', label: 'CDN', x: 200, y: 50, details: 'Static Assets' },
-      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 200, y: 150, details: 'NGINX/ALB' },
-      { id: 'gateway', type: 'api-gateway', label: 'API Gateway', x: 350, y: 150, details: 'Rate Limiting' },
-      { id: 'auth', type: 'auth-service', label: 'Auth Service', x: 500, y: 50, details: 'JWT Tokens' },
-      { id: 'chat', type: 'service', label: 'Chat Service', x: 500, y: 150, details: 'WebSocket' },
-      { id: 'notification', type: 'notification-service', label: 'Push Service', x: 500, y: 250, details: 'FCM/APNS' },
-      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 650, y: 150, details: 'Session Store' },
-      { id: 'queue', type: 'queue', label: 'Message Queue', x: 650, y: 250, details: 'Apache Kafka' },
-      { id: 'db', type: 'database', label: 'PostgreSQL', x: 800, y: 200, details: 'Chat History' }
+      { id: 'user', type: 'user', label: 'Users', x: 50, y: 200, details: 'Mobile/Web Clients' },
+      { id: 'cdn', type: 'cdn', label: 'CDN', x: 250, y: 50, details: 'Static Assets' },
+      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 250, y: 200, details: 'NGINX/ALB' },
+      { id: 'gateway', type: 'api-gateway', label: 'API Gateway', x: 450, y: 200, details: 'Rate Limiting' },
+      { id: 'auth', type: 'auth-service', label: 'Auth Service', x: 650, y: 50, details: 'JWT Tokens' },
+      { id: 'chat', type: 'service', label: 'Chat Service', x: 650, y: 200, details: 'WebSocket' },
+      { id: 'notification', type: 'notification-service', label: 'Push Service', x: 650, y: 350, details: 'FCM/APNS' },
+      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 850, y: 150, details: 'Session Store' },
+      { id: 'queue', type: 'queue', label: 'Message Queue', x: 850, y: 300, details: 'Apache Kafka' },
+      { id: 'db', type: 'database', label: 'PostgreSQL', x: 1050, y: 225, details: 'Chat History' }
     ],
     connections: [
       { from: 'user', to: 'cdn', label: 'HTTPS' },
@@ -250,13 +673,13 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
   },
   'url-shortener': {
     components: [
-      { id: 'user', type: 'user', label: 'Users', x: 50, y: 150 },
-      { id: 'cdn', type: 'cdn', label: 'CDN', x: 200, y: 50 },
-      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 200, y: 150 },
-      { id: 'web', type: 'web-server', label: 'Web Servers', x: 350, y: 150 },
-      { id: 'api', type: 'api-server', label: 'URL Service', x: 500, y: 150 },
-      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 350, y: 300 },
-      { id: 'db', type: 'database', label: 'URL Database', x: 650, y: 200 }
+      { id: 'user', type: 'user', label: 'Users', x: 80, y: 300 },
+      { id: 'cdn', type: 'cdn', label: 'CDN', x: 350, y: 150 },
+      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 350, y: 300 },
+      { id: 'web', type: 'web-server', label: 'Web Servers', x: 620, y: 250 },
+      { id: 'api', type: 'api-server', label: 'URL Service', x: 620, y: 400 },
+      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 920, y: 200 },
+      { id: 'db', type: 'database', label: 'URL Database', x: 920, y: 400 }
     ],
     connections: [
       { from: 'user', to: 'cdn' },
@@ -269,17 +692,17 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
   },
   'social-media': {
     components: [
-      { id: 'user', type: 'user', label: 'Users', x: 50, y: 200 },
-      { id: 'cdn', type: 'cdn', label: 'CDN', x: 200, y: 50 },
-      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 200, y: 150 },
-      { id: 'web', type: 'web-server', label: 'Web Servers', x: 350, y: 150 },
-      { id: 'api', type: 'api-server', label: 'Feed API', x: 500, y: 100 },
-      { id: 'post-service', type: 'service', label: 'Post Service', x: 500, y: 200 },
-      { id: 'user-service', type: 'service', label: 'User Service', x: 500, y: 300 },
-      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 650, y: 100 },
-      { id: 'queue', type: 'queue', label: 'Message Queue', x: 650, y: 200 },
-      { id: 'user-db', type: 'database', label: 'User DB', x: 800, y: 250 },
-      { id: 'post-db', type: 'database', label: 'Post DB', x: 800, y: 350 }
+      { id: 'user', type: 'user', label: 'Users', x: 80, y: 350 },
+      { id: 'cdn', type: 'cdn', label: 'CDN', x: 350, y: 150 },
+      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 350, y: 350 },
+      { id: 'web', type: 'web-server', label: 'Web Servers', x: 620, y: 350 },
+      { id: 'api', type: 'api-server', label: 'Feed API', x: 920, y: 150 },
+      { id: 'post-service', type: 'service', label: 'Post Service', x: 920, y: 350 },
+      { id: 'user-service', type: 'service', label: 'User Service', x: 920, y: 550 },
+      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 1220, y: 200 },
+      { id: 'queue', type: 'queue', label: 'Message Queue', x: 1220, y: 400 },
+      { id: 'user-db', type: 'database', label: 'User DB', x: 1520, y: 300 },
+      { id: 'post-db', type: 'database', label: 'Post DB', x: 1520, y: 500 }
     ],
     connections: [
       { from: 'user', to: 'cdn' },
@@ -296,18 +719,18 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
   },
   'e-commerce': {
     components: [
-      { id: 'user', type: 'user', label: 'Users', x: 50, y: 200 },
-      { id: 'cdn', type: 'cdn', label: 'CDN', x: 200, y: 50 },
-      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 200, y: 150 },
-      { id: 'web', type: 'web-server', label: 'Web Servers', x: 350, y: 150 },
-      { id: 'product-api', type: 'api-server', label: 'Product API', x: 500, y: 100 },
-      { id: 'order-api', type: 'api-server', label: 'Order API', x: 500, y: 200 },
-      { id: 'payment-api', type: 'api-server', label: 'Payment API', x: 500, y: 300 },
-      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 650, y: 150 },
-      { id: 'search', type: 'service', label: 'Search Engine', x: 350, y: 300 },
-      { id: 'product-db', type: 'database', label: 'Product DB', x: 750, y: 100 },
-      { id: 'order-db', type: 'database', label: 'Order DB', x: 750, y: 250 },
-      { id: 'user-db', type: 'database', label: 'User DB', x: 750, y: 350 }
+      { id: 'user', type: 'user', label: 'Users', x: 80, y: 400 },
+      { id: 'cdn', type: 'cdn', label: 'CDN', x: 350, y: 200 },
+      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 350, y: 400 },
+      { id: 'web', type: 'web-server', label: 'Web Servers', x: 620, y: 400 },
+      { id: 'product-api', type: 'api-server', label: 'Product API', x: 920, y: 200 },
+      { id: 'order-api', type: 'api-server', label: 'Order API', x: 920, y: 400 },
+      { id: 'payment-api', type: 'api-server', label: 'Payment API', x: 920, y: 600 },
+      { id: 'cache', type: 'cache', label: 'Redis Cache', x: 1220, y: 250 },
+      { id: 'search', type: 'service', label: 'Search Engine', x: 620, y: 600 },
+      { id: 'product-db', type: 'database', label: 'Product DB', x: 1520, y: 200 },
+      { id: 'order-db', type: 'database', label: 'Order DB', x: 1520, y: 400 },
+      { id: 'user-db', type: 'database', label: 'User DB', x: 1520, y: 600 }
     ],
     connections: [
       { from: 'user', to: 'cdn' },
