@@ -1,6 +1,6 @@
 import type { DiagramData } from '../types/diagram'
 
-const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture.
+const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
 The JSON should have this exact structure:
 {
@@ -19,7 +19,57 @@ The JSON should have this exact structure:
       "to": "component-id",
       "label": "optional-connection-label"
     }
-  ]
+  ],
+  "analysis": {
+    "requirements": {
+      "functional": ["Core features the system must support"],
+      "nonFunctional": ["Performance, scalability, reliability requirements"],
+      "outOfScope": ["Features explicitly not included in this design"]
+    },
+    "capacity": {
+      "dau": "Daily active users estimate",
+      "peakQps": "Peak queries per second",
+      "storage": "Total storage requirements",
+      "bandwidth": "Network bandwidth needs"
+    },
+    "apis": [
+      {
+        "endpoint": "API endpoint path",
+        "description": "What this endpoint does"
+      }
+    ],
+    "database": {
+      "choice": "Database technology chosen",
+      "rationale": "Why this database was selected",
+      "schema": "Optional schema design"
+    },
+    "challenges": [
+      {
+        "title": "Major system challenge",
+        "solutions": [
+          {
+            "type": "bad",
+            "title": "Poor solution",
+            "description": "Why this approach fails"
+          },
+          {
+            "type": "good",
+            "title": "Decent solution", 
+            "description": "A workable but not optimal approach"
+          },
+          {
+            "type": "great",
+            "title": "Excellent solution",
+            "description": "The recommended approach and why"
+          }
+        ],
+        "dataFlow": "Optional data flow description"
+      }
+    ],
+    "tradeoffs": {
+      "summary": "Key architectural tradeoffs and decisions made"
+    }
+  }
 }
 
 Available component types:
@@ -62,7 +112,7 @@ async function callOpenAI(prompt: string): Promise<DiagramData> {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 3000
     })
   })
 
@@ -100,7 +150,7 @@ async function callAnthropic(prompt: string): Promise<DiagramData> {
     },
     body: JSON.stringify({
       model: 'claude-3-sonnet-20240229',
-      max_tokens: 1000,
+      max_tokens: 3000,
       messages: [
         {
           role: 'user',

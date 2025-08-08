@@ -24,13 +24,14 @@
 
 .empty-state h3 {
   margin: 0 0 0.5rem 0;
-  color: #495057;
+  color: #212529;
   font-size: 1.5rem;
 }
 
 .empty-state p {
   margin: 0;
   font-size: 1rem;
+  color: #6c757d;
   opacity: 0.8;
 }
 

@@ -85,7 +85,7 @@
 
 .example-prompts h3 {
   margin: 0 0 1rem 0;
-  color: #495057;
+  color: #212529;
   font-size: 16px;
 }
 
@@ -101,6 +101,7 @@
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 13px;
+  color: #212529;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
