@@ -6,7 +6,18 @@ A web-based whiteboard application that generates system architecture diagrams f
 
 - **Natural Language Input**: Describe your system in plain English
 - **AI-Powered Generation**: Uses OpenAI GPT-4 or Anthropic Claude to generate diagrams
+- **Enhanced Visual Design**: 
+  - Databases rendered as ellipses for better visual distinction
+  - Cache systems displayed as diamonds
+  - Bidirectional arrows for two-way data flows
+  - Smart connection points (right-to-left instead of top-to-bottom)
+  - Request/response labels on arrows for better clarity
 - **Interactive Canvas**: Drag and reposition components on the canvas
+- **Comprehensive Analysis**: 
+  - Detailed database schema design with PKs, FKs, and indexes
+  - NoSQL schema with partition/sort keys, GSIs, and LSIs
+  - Capacity planning with storage calculations and growth projections
+  - Multi-year scaling estimates with redundancy factors
 - **Multiple Templates**: Pre-built templates for common system architectures
 - **Export Functionality**: Export diagrams as PNG images
 - **Responsive Design**: Works on desktop and mobile devices
@@ -53,17 +64,35 @@ A web-based whiteboard application that generates system architecture diagrams f
 
 ## Example Prompts
 
-- "Design a scalable chat application"
-- "Design a URL shortener like bit.ly"
-- "Design a social media feed system"
-- "Design an e-commerce platform"
-- "Design a video streaming service"
+- "Design a scalable chat application with real-time messaging"
+- "Design a URL shortener like bit.ly with analytics"
+- "Design a social media feed system with personalization"
+- "Design an e-commerce platform with inventory management"
+- "Design a video streaming service with content delivery"
+- "Design a microservices architecture for a fintech platform"
+- "Create a system for processing millions of IoT sensor readings"
+
+## Enhanced Analysis Features
+
+The AI now provides:
+
+- **Database Schema Design**: Complete table structures with primary keys, foreign keys, and indexes
+- **NoSQL Design**: Partition keys, sort keys, GSIs, and LSIs for DynamoDB-style databases  
+- **Capacity Planning**: Realistic storage calculations (e.g., "100M records × 1KB = 100GB/year")
+- **Growth Projections**: 1-5 year scaling estimates with redundancy and index overhead
+- **Connection Labels**: Clear request/response flow descriptions on arrows
+- **Visual Clarity**: Database ellipses, cache diamonds, and bidirectional arrows
 
 ## Architecture
 
 - **Frontend**: React + TypeScript + Vite
-- **Canvas**: Konva.js for interactive diagrams
-- **AI Integration**: OpenAI GPT-4 or Anthropic Claude
+- **Canvas**: Excalidraw for interactive diagrams with enhanced shapes
+- **AI Integration**: OpenAI GPT-4 or Anthropic Claude with detailed system analysis
+- **Visual Components**: 
+  - Rectangles for services and servers
+  - Ellipses for databases (SQL/NoSQL)
+  - Diamonds for cache systems
+  - Smart arrow routing and labeling
 - **Styling**: CSS with responsive design
 - **Deployment**: Ready for Vercel/Netlify
 
@@ -86,14 +115,16 @@ npm run build
 ```
 src/
 ├── components/
-│   ├── PromptInput.tsx      # Input form component
-│   ├── DiagramCanvas.tsx    # Interactive canvas
-│   └── *.css               # Component styles
+│   ├── PromptInput.tsx           # Input form component
+│   ├── ExcalidrawCanvas.tsx      # Enhanced interactive canvas with shape rendering
+│   ├── SystemAnalysisPanel.tsx   # Detailed system analysis display
+│   └── *.css                    # Component styles
 ├── services/
-│   ├── aiDiagramGenerator.ts    # AI service integration
-│   └── mockDiagramGenerator.ts  # Fallback mock data
-├── App.tsx                 # Main application
-└── types/                  # TypeScript interfaces
+│   ├── aiDiagramGenerator.ts     # Enhanced AI service with detailed schema analysis
+│   └── mockDiagramGenerator.ts   # Fallback mock data
+├── App.tsx                      # Main application
+└── types/
+    └── diagram.ts               # TypeScript interfaces for enhanced data structures
 ```
 
 ## Contributing
