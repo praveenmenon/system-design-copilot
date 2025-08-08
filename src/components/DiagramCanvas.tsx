@@ -9,15 +9,24 @@ interface DiagramCanvasProps {
 }
 
 const componentTypes = {
-  'load-balancer': { color: '#4CAF50', width: 120, height: 60 },
-  'web-server': { color: '#2196F3', width: 100, height: 60 },
-  'api-server': { color: '#FF9800', width: 100, height: 60 },
-  'database': { color: '#9C27B0', width: 100, height: 80 },
-  'cache': { color: '#F44336', width: 80, height: 60 },
-  'queue': { color: '#795548', width: 100, height: 60 },
-  'cdn': { color: '#607D8B', width: 80, height: 60 },
   'user': { color: '#8BC34A', width: 80, height: 60 },
+  'cdn': { color: '#607D8B', width: 100, height: 60 },
+  'load-balancer': { color: '#4CAF50', width: 120, height: 60 },
+  'api-gateway': { color: '#FF5722', width: 110, height: 60 },
+  'web-server': { color: '#2196F3', width: 100, height: 60 },
+  'auth-service': { color: '#E91E63', width: 110, height: 60 },
+  'user-service': { color: '#9C27B0', width: 110, height: 60 },
+  'content-service': { color: '#3F51B5', width: 120, height: 60 },
+  'notification-service': { color: '#FF9800', width: 130, height: 60 },
+  'search-service': { color: '#795548', width: 120, height: 60 },
+  'payment-service': { color: '#F44336', width: 120, height: 60 },
+  'api-server': { color: '#FF9800', width: 100, height: 60 },
   'service': { color: '#00BCD4', width: 100, height: 60 },
+  'cache': { color: '#F44336', width: 80, height: 60 },
+  'database': { color: '#9C27B0', width: 100, height: 80 },
+  'queue': { color: '#795548', width: 100, height: 60 },
+  'blob-storage': { color: '#607D8B', width: 110, height: 60 },
+  'monitoring': { color: '#4CAF50', width: 100, height: 60 },
   'default': { color: '#757575', width: 100, height: 60 }
 }
 
@@ -56,10 +65,24 @@ const ComponentBox: React.FC<{
         fill="white"
         fontStyle="bold"
         width={config.width}
-        height={config.height}
+        height={component.details ? config.height - 20 : config.height}
         align="center"
         verticalAlign="middle"
+        y={component.details ? -5 : 0}
       />
+      {component.details && (
+        <Text
+          text={component.details}
+          fontSize={9}
+          fontFamily="Arial"
+          fill="rgba(255,255,255,0.8)"
+          width={config.width}
+          height={20}
+          align="center"
+          verticalAlign="middle"
+          y={config.height - 15}
+        />
+      )}
     </Group>
   )
 }
@@ -71,17 +94,37 @@ const DiagramCanvas: React.FC<DiagramCanvasProps> = ({ diagramData, onUpdateDiag
   useEffect(() => {
     const checkSize = () => {
       if (containerRef.current && stageRef.current) {
-        const containerWidth = containerRef.current.offsetWidth
-        const containerHeight = containerRef.current.offsetHeight
-        stageRef.current.width(containerWidth)
-        stageRef.current.height(containerHeight)
+        const containerWidth = containerRef.current.offsetWidth || 800
+        const containerHeight = containerRef.current.offsetHeight || 600
+        
+        // Ensure minimum dimensions to avoid zero-width/height canvas
+        const width = Math.max(containerWidth, 400)
+        const height = Math.max(containerHeight, 400)
+        
+        stageRef.current.width(width)
+        stageRef.current.height(height)
       }
     }
 
-    checkSize()
+    // Use timeout to ensure DOM is ready
+    setTimeout(checkSize, 100)
     window.addEventListener('resize', checkSize)
     return () => window.removeEventListener('resize', checkSize)
   }, [])
+
+  // Re-check size when diagramData changes
+  useEffect(() => {
+    if (diagramData && containerRef.current && stageRef.current) {
+      const containerWidth = containerRef.current.offsetWidth || 800
+      const containerHeight = containerRef.current.offsetHeight || 600
+      
+      const width = Math.max(containerWidth, 400)
+      const height = Math.max(containerHeight, 400)
+      
+      stageRef.current.width(width)
+      stageRef.current.height(height)
+    }
+  }, [diagramData])
 
   const handleComponentDragEnd = (id: string, x: number, y: number) => {
     if (!diagramData) return
@@ -108,23 +151,40 @@ const DiagramCanvas: React.FC<DiagramCanvasProps> = ({ diagramData, onUpdateDiag
       const fromConfig = componentTypes[fromComponent.type as keyof typeof componentTypes] || componentTypes.default
       const toConfig = componentTypes[toComponent.type as keyof typeof componentTypes] || componentTypes.default
 
-      const points = [
-        fromComponent.x + fromConfig.width / 2,
-        fromComponent.y + fromConfig.height,
-        toComponent.x + toConfig.width / 2,
-        toComponent.y
-      ]
+      const startX = fromComponent.x + fromConfig.width / 2
+      const startY = fromComponent.y + fromConfig.height
+      const endX = toComponent.x + toConfig.width / 2
+      const endY = toComponent.y
+      
+      const points = [startX, startY, endX, endY]
+      
+      // Calculate label position (middle of the arrow)
+      const labelX = (startX + endX) / 2
+      const labelY = (startY + endY) / 2
 
       return (
-        <Arrow
-          key={`${connection.from}-${connection.to}-${index}`}
-          points={points}
-          pointerLength={10}
-          pointerWidth={10}
-          fill="#333"
-          stroke="#333"
-          strokeWidth={2}
-        />
+        <Group key={`${connection.from}-${connection.to}-${index}`}>
+          <Arrow
+            points={points}
+            pointerLength={10}
+            pointerWidth={10}
+            fill="#333"
+            stroke="#333"
+            strokeWidth={2}
+          />
+          {connection.label && (
+            <Text
+              x={labelX}
+              y={labelY - 8}
+              text={connection.label}
+              fontSize={10}
+              fontFamily="Arial"
+              fill="#666"
+              align="center"
+              offsetX={connection.label.length * 2.5}
+            />
+          )}
+        </Group>
       )
     })
   }
@@ -145,8 +205,8 @@ const DiagramCanvas: React.FC<DiagramCanvasProps> = ({ diagramData, onUpdateDiag
     <div className="diagram-canvas" ref={containerRef}>
       <Stage
         ref={stageRef}
-        width={800}
-        height={600}
+        width={containerRef.current?.offsetWidth || 800}
+        height={containerRef.current?.offsetHeight || 600}
       >
         <Layer>
           {renderConnections()}
