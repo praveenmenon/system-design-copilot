@@ -14,34 +14,38 @@ export interface Connection {
 }
 
 export interface SystemAnalysis {
-  functionalRequirements: {
-    core: string[]
+  requirements: {
+    functional: string[]
+    nonFunctional: string[]
     outOfScope: string[]
   }
-  nonFunctionalRequirements: string[]
-  capacityEstimation: {
+  capacity: {
     dau: string
-    readQPS: string
-    writeQPS: string
+    peakQps: string
     storage: string
+    bandwidth: string
   }
-  coreEntities: string[]
-  keyAPIs: string[]
-  databaseChoice: {
-    type: string
+  apis: {
+    endpoint: string
+    description: string
+  }[]
+  database: {
+    choice: string
     rationale: string
-    schema: string
+    schema?: string
   }
-  keyChallenges: Array<{
-    challenge: string
+  challenges: {
+    title: string
     solutions: {
-      bad: string
-      good: string
-      great: string
-    }
-    dataFlow: string
-  }>
-  tradeoffs: string
+      type: 'bad' | 'good' | 'great'
+      title: string
+      description: string
+    }[]
+    dataFlow?: string
+  }[]
+  tradeoffs: {
+    summary: string
+  }
 }
 
 export interface DiagramData {

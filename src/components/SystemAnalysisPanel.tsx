@@ -1,57 +1,62 @@
 import { useState } from 'react'
-import type { SystemAnalysis } from '../types/diagram'
 import './SystemAnalysisPanel.css'
+import type { SystemAnalysis } from '../types/diagram'
 
 interface SystemAnalysisPanelProps {
-  analysis: SystemAnalysis | null
+  diagramData: any | null
 }
 
-const SystemAnalysisPanel: React.FC<SystemAnalysisPanelProps> = ({ analysis }) => {
-  const [activeSection, setActiveSection] = useState<string>('functional')
+type SectionKey = 'requirements' | 'capacity' | 'apis' | 'database' | 'challenges' | 'tradeoffs'
+
+const sections = [
+  { key: 'requirements' as SectionKey, label: 'Requirements', icon: '📋' },
+  { key: 'capacity' as SectionKey, label: 'Capacity', icon: '📊' },
+  { key: 'apis' as SectionKey, label: 'APIs', icon: '🔌' },
+  { key: 'database' as SectionKey, label: 'Database', icon: '🗄️' },
+  { key: 'challenges' as SectionKey, label: 'Challenges', icon: '⚡' },
+  { key: 'tradeoffs' as SectionKey, label: 'Trade-offs', icon: '⚖️' }
+]
+
+export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanelProps) {
+  const [activeSection, setActiveSection] = useState<SectionKey>('requirements')
+
+  const analysis = diagramData?.analysis
 
   if (!analysis) {
     return (
       <div className="analysis-panel empty">
         <div className="empty-state">
+          <div className="empty-icon">📋</div>
           <h3>No Analysis Available</h3>
-          <p>Generate a system design to see detailed analysis</p>
+          <p>Generate a system diagram to see the analysis</p>
         </div>
       </div>
     )
   }
 
-  const sections = [
-    { id: 'functional', label: 'Requirements', icon: '📋' },
-    { id: 'capacity', label: 'Capacity', icon: '📊' },
-    { id: 'entities', label: 'Entities & APIs', icon: '🔧' },
-    { id: 'database', label: 'Database', icon: '💾' },
-    { id: 'challenges', label: 'Challenges', icon: '⚡' },
-    { id: 'tradeoffs', label: 'Trade-offs', icon: '⚖️' }
-  ]
-
-  const renderFunctionalRequirements = () => (
+  const renderRequirements = () => (
     <div className="section-content">
       <div className="subsection">
-        <h4>Core Requirements (2-3 key)</h4>
+        <h4>Functional Requirements</h4>
         <ul>
-          {analysis.functionalRequirements.core.map((req, index) => (
+          {analysis.requirements.functional.map((req, index) => (
             <li key={index} className="core-requirement">{req}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="subsection">
-        <h4>Out of Scope</h4>
-        <ul>
-          {analysis.functionalRequirements.outOfScope.map((req, index) => (
-            <li key={index} className="out-of-scope">{req}</li>
           ))}
         </ul>
       </div>
       <div className="subsection">
         <h4>Non-Functional Requirements</h4>
         <ul>
-          {analysis.nonFunctionalRequirements.map((nfr, index) => (
-            <li key={index} className="nfr">{nfr}</li>
+          {analysis.requirements.nonFunctional.map((req, index) => (
+            <li key={index} className="nfr">{req}</li>
+          ))}
+        </ul>
+      </div>
+      <div className="subsection">
+        <h4>Out of Scope</h4>
+        <ul>
+          {analysis.requirements.outOfScope.map((req, index) => (
+            <li key={index} className="out-of-scope">{req}</li>
           ))}
         </ul>
       </div>
@@ -63,41 +68,34 @@ const SystemAnalysisPanel: React.FC<SystemAnalysisPanelProps> = ({ analysis }) =
       <div className="capacity-grid">
         <div className="capacity-item">
           <h4>Daily Active Users</h4>
-          <span className="capacity-value">{analysis.capacityEstimation.dau}</span>
+          <div className="capacity-value">{analysis.capacity.dau}</div>
         </div>
         <div className="capacity-item">
-          <h4>Read QPS</h4>
-          <span className="capacity-value">{analysis.capacityEstimation.readQPS}</span>
+          <h4>Peak QPS</h4>
+          <div className="capacity-value">{analysis.capacity.peakQps}</div>
         </div>
         <div className="capacity-item">
-          <h4>Write QPS</h4>
-          <span className="capacity-value">{analysis.capacityEstimation.writeQPS}</span>
+          <h4>Storage</h4>
+          <div className="capacity-value">{analysis.capacity.storage}</div>
         </div>
         <div className="capacity-item">
-          <h4>Storage Growth</h4>
-          <span className="capacity-value">{analysis.capacityEstimation.storage}</span>
+          <h4>Bandwidth</h4>
+          <div className="capacity-value">{analysis.capacity.bandwidth}</div>
         </div>
       </div>
     </div>
   )
 
-  const renderEntitiesAndAPIs = () => (
+  const renderApis = () => (
     <div className="section-content">
       <div className="subsection">
-        <h4>Core Entities</h4>
-        <ul>
-          {analysis.coreEntities.map((entity, index) => (
-            <li key={index} className="entity">{entity}</li>
-          ))}
-        </ul>
-      </div>
-      <div className="subsection">
-        <h4>Key APIs</h4>
-        <ul>
-          {analysis.keyAPIs.map((api, index) => (
-            <li key={index} className="api-endpoint">{api}</li>
-          ))}
-        </ul>
+        <h4>API Endpoints</h4>
+        {analysis.apis.map((api, index) => (
+          <div key={index} className="api-endpoint">
+            <strong>{api.endpoint}</strong>
+            <p>{api.description}</p>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -105,45 +103,41 @@ const SystemAnalysisPanel: React.FC<SystemAnalysisPanelProps> = ({ analysis }) =
   const renderDatabase = () => (
     <div className="section-content">
       <div className="subsection">
-        <h4>Database Choice: {analysis.databaseChoice.type}</h4>
+        <h4>Database Choice: {analysis.database.choice}</h4>
         <div className="database-rationale">
-          <p>{analysis.databaseChoice.rationale}</p>
+          <p>{analysis.database.rationale}</p>
         </div>
-      </div>
-      <div className="subsection">
-        <h4>Schema Design</h4>
-        <pre className="schema-code">{analysis.databaseChoice.schema}</pre>
+        {analysis.database.schema && (
+          <>
+            <h4>Schema Design</h4>
+            <div className="schema-code">
+              {analysis.database.schema}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
 
   const renderChallenges = () => (
     <div className="section-content">
-      {analysis.keyChallenges.map((challenge, index) => (
+      {analysis.challenges.map((challenge, index) => (
         <div key={index} className="challenge-item">
-          <h4 className="challenge-title">{challenge.challenge}</h4>
-          
+          <h3 className="challenge-title">{challenge.title}</h3>
           <div className="solutions">
-            <div className="solution bad">
-              <h5>❌ Bad Solution</h5>
-              <p>{challenge.solutions.bad}</p>
-            </div>
-            
-            <div className="solution good">
-              <h5>⚠️ Good Solution</h5>
-              <p>{challenge.solutions.good}</p>
-            </div>
-            
-            <div className="solution great">
-              <h5>✅ Great Solution</h5>
-              <p>{challenge.solutions.great}</p>
-            </div>
+            {challenge.solutions.map((solution, sIndex) => (
+              <div key={sIndex} className={`solution ${solution.type}`}>
+                <h5>{solution.title}</h5>
+                <p>{solution.description}</p>
+              </div>
+            ))}
           </div>
-          
-          <div className="data-flow">
-            <h5>Data Flow</h5>
-            <code>{challenge.dataFlow}</code>
-          </div>
+          {challenge.dataFlow && (
+            <div className="data-flow">
+              <h5>Data Flow</h5>
+              <code>{challenge.dataFlow}</code>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -152,40 +146,47 @@ const SystemAnalysisPanel: React.FC<SystemAnalysisPanelProps> = ({ analysis }) =
   const renderTradeoffs = () => (
     <div className="section-content">
       <div className="tradeoffs-summary">
-        <h4>System Trade-offs & Business Impact</h4>
-        <p>{analysis.tradeoffs}</p>
+        <h4>Key Trade-offs</h4>
+        <p>{analysis.tradeoffs.summary}</p>
       </div>
     </div>
   )
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'functional': return renderFunctionalRequirements()
-      case 'capacity': return renderCapacity()
-      case 'entities': return renderEntitiesAndAPIs()
-      case 'database': return renderDatabase()
-      case 'challenges': return renderChallenges()
-      case 'tradeoffs': return renderTradeoffs()
-      default: return renderFunctionalRequirements()
+      case 'requirements':
+        return renderRequirements()
+      case 'capacity':
+        return renderCapacity()
+      case 'apis':
+        return renderApis()
+      case 'database':
+        return renderDatabase()
+      case 'challenges':
+        return renderChallenges()
+      case 'tradeoffs':
+        return renderTradeoffs()
+      default:
+        return null
     }
   }
 
   return (
     <div className="analysis-panel">
       <div className="panel-header">
-        <h3>System Design Analysis</h3>
-        <p>45-minute interview format with leadership insights</p>
+        <h3>System Analysis</h3>
+        <p>Comprehensive system design breakdown</p>
       </div>
       
       <div className="panel-navigation">
         {sections.map((section) => (
           <button
-            key={section.id}
-            className={`nav-button ${activeSection === section.id ? 'active' : ''}`}
-            onClick={() => setActiveSection(section.id)}
+            key={section.key}
+            className={`nav-button ${activeSection === section.key ? 'active' : ''}`}
+            onClick={() => setActiveSection(section.key)}
           >
-            <span className="nav-icon">{section.icon}</span>
-            <span className="nav-label">{section.label}</span>
+            <div className="nav-icon">{section.icon}</div>
+            <div className="nav-label">{section.label}</div>
           </button>
         ))}
       </div>
@@ -196,5 +197,3 @@ const SystemAnalysisPanel: React.FC<SystemAnalysisPanelProps> = ({ analysis }) =
     </div>
   )
 }
-
-export default SystemAnalysisPanel

@@ -1,5 +1,161 @@
 import type { DiagramData } from '../types/diagram'
 
+const analysisTemplates = {
+  'chat-app': {
+    requirements: {
+      functional: [
+        "Send and receive real-time messages",
+        "Create and join chat rooms",
+        "User authentication and profiles",
+        "Message history and search",
+        "File and media sharing",
+        "Online/offline status indicators"
+      ],
+      nonFunctional: [
+        "Handle 10M+ daily active users",
+        "Message delivery latency < 100ms",
+        "99.9% uptime availability",
+        "Support 50K concurrent connections per server",
+        "End-to-end encryption for security"
+      ],
+      outOfScope: [
+        "Video/voice calling features",
+        "Advanced moderation tools",
+        "Third-party integrations",
+        "Mobile push notifications"
+      ]
+    },
+    capacity: {
+      dau: "10M users",
+      peakQps: "500K requests/sec",
+      storage: "50TB messages + 200TB media",
+      bandwidth: "10Gbps peak"
+    },
+    apis: [
+      { endpoint: "POST /api/auth/login", description: "User authentication" },
+      { endpoint: "GET /api/rooms", description: "List user's chat rooms" },
+      { endpoint: "POST /api/rooms/{id}/messages", description: "Send message" },
+      { endpoint: "GET /api/rooms/{id}/messages", description: "Get message history" },
+      { endpoint: "WebSocket /ws/rooms/{id}", description: "Real-time message stream" }
+    ],
+    database: {
+      choice: "PostgreSQL + Redis + MongoDB",
+      rationale: "PostgreSQL for user data and room metadata, Redis for real-time presence and caching, MongoDB for message storage due to flexible schema and horizontal scaling",
+      schema: `Users: {id, username, email, password_hash, created_at}\nRooms: {id, name, type, created_by, created_at}\nMessages: {id, room_id, user_id, content, timestamp, message_type}`
+    },
+    challenges: [
+      {
+        title: "Real-time Message Delivery at Scale",
+        solutions: [
+          {
+            type: "bad" as const,
+            title: "Direct database polling",
+            description: "Constantly polling database for new messages creates massive load and poor user experience with high latency"
+          },
+          {
+            type: "good" as const, 
+            title: "WebSocket with single server",
+            description: "WebSocket provides real-time communication but single server limits scalability and creates single point of failure"
+          },
+          {
+            type: "great" as const,
+            title: "WebSocket + Message Queue + Load Balancing",
+            description: "Multiple WebSocket servers with message queue (Redis/RabbitMQ) for inter-server communication, load balancer for distribution"
+          }
+        ],
+        dataFlow: "User A sends message → API Server → Message Queue → WebSocket Servers → User B receives message"
+      },
+      {
+        title: "Message Storage and Retrieval",
+        solutions: [
+          {
+            type: "bad" as const,
+            title: "Single PostgreSQL instance",
+            description: "Relational database becomes bottleneck with high write volume and complex queries for message history"
+          },
+          {
+            type: "good" as const,
+            title: "Sharded PostgreSQL",
+            description: "Horizontal sharding distributes load but adds complexity for cross-shard queries and maintenance"
+          },
+          {
+            type: "great" as const,
+            title: "MongoDB with Time-based Partitioning",
+            description: "Document database optimized for write-heavy workloads, automatic sharding, and efficient range queries for message history"
+          }
+        ]
+      }
+    ],
+    tradeoffs: {
+      summary: "Chose availability and partition tolerance over strict consistency (AP in CAP theorem). Messages may arrive out of order occasionally but system remains highly available. Used polyglot persistence trading complexity for optimal performance per data type."
+    }
+  },
+  'url-shortener': {
+    requirements: {
+      functional: [
+        "Shorten long URLs to compact format",
+        "Redirect short URLs to original URLs", 
+        "Custom alias support",
+        "Analytics and click tracking",
+        "URL expiration and management"
+      ],
+      nonFunctional: [
+        "Handle 100M URLs shortened daily",
+        "Redirect latency < 20ms",
+        "99.95% uptime",
+        "100:1 read-to-write ratio optimization"
+      ],
+      outOfScope: [
+        "User accounts and dashboard",
+        "Advanced analytics reporting",
+        "URL preview generation",
+        "Bulk URL operations"
+      ]
+    },
+    capacity: {
+      dau: "50M users",
+      peakQps: "10K writes, 1M reads per second",
+      storage: "1TB URL mappings + 10TB analytics",
+      bandwidth: "5Gbps peak"
+    },
+    apis: [
+      { endpoint: "POST /api/shorten", description: "Create short URL" },
+      { endpoint: "GET /{shortCode}", description: "Redirect to original URL" },
+      { endpoint: "GET /api/analytics/{shortCode}", description: "Get URL statistics" }
+    ],
+    database: {
+      choice: "NoSQL (DynamoDB/Cassandra) + Redis",
+      rationale: "NoSQL for horizontal scaling and fast key-value lookups, Redis for caching frequently accessed URLs and reducing database load",
+      schema: `URLs: {short_code, original_url, created_at, expires_at, click_count}\nAnalytics: {short_code, timestamp, ip_address, user_agent, referrer}`
+    },
+    challenges: [
+      {
+        title: "Generating Unique Short Codes",
+        solutions: [
+          {
+            type: "bad" as const,
+            title: "Random generation with collision check",
+            description: "High probability of collisions at scale, requires multiple database roundtrips"
+          },
+          {
+            type: "good" as const,
+            title: "Auto-incrementing counter",
+            description: "Guarantees uniqueness but creates single point of failure and predictable URLs"
+          },
+          {
+            type: "great" as const,
+            title: "Base62 encoding with distributed counters",
+            description: "Multiple counter ranges assigned to different servers, Base62 encoding for compact URLs"
+          }
+        ]
+      }
+    ],
+    tradeoffs: {
+      summary: "Optimized for read-heavy workload with aggressive caching. Chose eventual consistency for better availability. Short codes are not cryptographically secure but prioritized simplicity and performance."
+    }
+  }
+}
+
 const componentTemplates = {
   'chat-app': {
     components: [
@@ -217,9 +373,11 @@ export const generateMockDiagram = async (prompt: string): Promise<DiagramData> 
   }
 
   const template = componentTemplates[selectedTemplate as keyof typeof componentTemplates]
+  const analysis = analysisTemplates[selectedTemplate as keyof typeof analysisTemplates] || analysisTemplates['chat-app']
   
   return {
     components: template.components.map(comp => ({ ...comp })),
-    connections: template.connections.map(conn => ({ ...conn }))
+    connections: template.connections.map(conn => ({ ...conn })),
+    analysis: analysis
   }
 }

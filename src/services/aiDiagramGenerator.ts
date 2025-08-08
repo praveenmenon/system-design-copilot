@@ -1,95 +1,95 @@
 import type { DiagramData } from '../types/diagram'
 
-const SYSTEM_PROMPT = `You are a senior staff engineer conducting a system design interview. Given a system design prompt, respond with a JSON object containing both the visual diagram AND a comprehensive structured analysis.
+const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
 The JSON should have this exact structure:
 {
   "components": [
     {
       "id": "unique-id",
-      "type": "component-type", 
+      "type": "component-type",
       "label": "Display Name",
       "x": number,
-      "y": number,
-      "details": "brief technical detail"
+      "y": number
     }
   ],
   "connections": [
     {
       "from": "component-id",
       "to": "component-id",
-      "label": "protocol/method (e.g., HTTPS, gRPC)"
+      "label": "optional-connection-label"
     }
   ],
   "analysis": {
-    "functionalRequirements": {
-      "core": ["2-3 key requirements"],
-      "outOfScope": ["requirement: reason for exclusion"]
+    "requirements": {
+      "functional": ["Core features the system must support"],
+      "nonFunctional": ["Performance, scalability, reliability requirements"],
+      "outOfScope": ["Features explicitly not included in this design"]
     },
-    "nonFunctionalRequirements": [
-      "Scale to X DAU with justification",
-      "Low latency <Xms for specific flows",
-      "High availability vs consistency trade-offs"
-    ],
-    "capacityEstimation": {
-      "dau": "100M users",
-      "readQPS": "calculation with assumptions",
-      "writeQPS": "calculation with assumptions",
-      "storage": "growth projection over 5 years"
+    "capacity": {
+      "dau": "Daily active users estimate",
+      "peakQps": "Peak queries per second",
+      "storage": "Total storage requirements",
+      "bandwidth": "Network bandwidth needs"
     },
-    "coreEntities": [
-      "Entity: attributes and relationships"
-    ],
-    "keyAPIs": [
-      "GET /endpoint: purpose and response",
-      "POST /endpoint: purpose and request/response"
-    ],
-    "databaseChoice": {
-      "type": "SQL/NoSQL",
-      "rationale": "why chosen vs alternatives",
-      "schema": "table structures with PKs, FKs, indexes"
-    },
-    "keyChallenges": [
+    "apis": [
       {
-        "challenge": "specific technical challenge",
-        "solutions": {
-          "bad": "why this approach fails",
-          "good": "better approach with trade-offs", 
-          "great": "optimal solution with implementation details"
-        },
-        "dataFlow": "step-by-step flow using ⇄ arrows"
+        "endpoint": "API endpoint path",
+        "description": "What this endpoint does"
       }
     ],
-    "tradeoffs": "overall system trade-offs and business impact"
+    "database": {
+      "choice": "Database technology chosen",
+      "rationale": "Why this database was selected",
+      "schema": "Optional schema design"
+    },
+    "challenges": [
+      {
+        "title": "Major system challenge",
+        "solutions": [
+          {
+            "type": "bad",
+            "title": "Poor solution",
+            "description": "Why this approach fails"
+          },
+          {
+            "type": "good",
+            "title": "Decent solution", 
+            "description": "A workable but not optimal approach"
+          },
+          {
+            "type": "great",
+            "title": "Excellent solution",
+            "description": "The recommended approach and why"
+          }
+        ],
+        "dataFlow": "Optional data flow description"
+      }
+    ],
+    "tradeoffs": {
+      "summary": "Key architectural tradeoffs and decisions made"
+    }
   }
 }
 
-Available component types (be specific):
+Available component types:
 - user: End users/clients
-- cdn: Content Delivery Network
-- load-balancer: Load Balancer (specify type)
-- api-gateway: API Gateway
-- web-server: Web/Frontend servers
-- auth-service: Authentication service
-- user-service: User management service  
-- content-service: Content/business logic service
-- notification-service: Notification system
-- search-service: Search/indexing service
-- payment-service: Payment processing
-- cache: Redis/Memcached (specify use case)
-- database: Database (specify SQL/NoSQL)
-- queue: Message Queue (Kafka/RabbitMQ)
-- blob-storage: File/media storage
-- monitoring: Monitoring/logging service
+- load-balancer: Load balancers
+- web-server: Web/frontend servers
+- api-server: API/backend servers
+- database: Databases
+- cache: Caching systems (Redis, Memcached)
+- queue: Message queues (RabbitMQ, Kafka)
+- cdn: Content delivery networks
+- service: Microservices or general services
 
-Position components in logical layers:
-- Users/CDN: x: 50-150
-- Load balancers/Gateways: x: 200-300  
-- Services layer: x: 400-600
-- Data layer: x: 700-900
-- Spread vertically to avoid overlap
-
-Focus on leadership, low-level protocols, proactive challenges, and trade-offs. Include reverse engineering comparisons when applicable.
+Position components logically:
+- Users typically on the left (x: 50-100)
+- Load balancers and CDNs near the front (x: 200-300)
+- Web servers in the middle (x: 350-500)
+- Backend services and APIs (x: 500-650)
+- Databases and storage on the right (x: 650+)
+- Spread vertically (y: 50-400) to avoid overlap
 
 Respond with ONLY the JSON object, no other text.`
 
@@ -112,7 +112,7 @@ async function callOpenAI(prompt: string): Promise<DiagramData> {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 2000
+      max_tokens: 3000
     })
   })
 
@@ -128,32 +128,7 @@ async function callOpenAI(prompt: string): Promise<DiagramData> {
   }
 
   try {
-    // Try to extract JSON if response contains other text
-    let jsonContent = content.trim()
-    
-    // Look for JSON object boundaries
-    const jsonStart = jsonContent.indexOf('{')
-    const jsonEnd = jsonContent.lastIndexOf('}')
-    
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      jsonContent = jsonContent.substring(jsonStart, jsonEnd + 1)
-    }
-    
-    // If JSON appears incomplete, try to fix common issues
-    if (!jsonContent.endsWith('}')) {
-      console.warn('JSON appears incomplete, attempting to fix...')
-      // Count braces to see how many are missing
-      const openBraces = (jsonContent.match(/{/g) || []).length
-      const closeBraces = (jsonContent.match(/}/g) || []).length
-      const missingBraces = openBraces - closeBraces
-      
-      // Add missing closing braces
-      for (let i = 0; i < missingBraces; i++) {
-        jsonContent += '}'
-      }
-    }
-    
-    return JSON.parse(jsonContent)
+    return JSON.parse(content)
   } catch (e) {
     console.error('Failed to parse AI response:', content)
     throw new Error('Invalid JSON response from AI')
@@ -175,7 +150,7 @@ async function callAnthropic(prompt: string): Promise<DiagramData> {
     },
     body: JSON.stringify({
       model: 'claude-3-sonnet-20240229',
-      max_tokens: 2000,
+      max_tokens: 3000,
       messages: [
         {
           role: 'user',
@@ -197,32 +172,7 @@ async function callAnthropic(prompt: string): Promise<DiagramData> {
   }
 
   try {
-    // Try to extract JSON if response contains other text
-    let jsonContent = content.trim()
-    
-    // Look for JSON object boundaries
-    const jsonStart = jsonContent.indexOf('{')
-    const jsonEnd = jsonContent.lastIndexOf('}')
-    
-    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-      jsonContent = jsonContent.substring(jsonStart, jsonEnd + 1)
-    }
-    
-    // If JSON appears incomplete, try to fix common issues
-    if (!jsonContent.endsWith('}')) {
-      console.warn('JSON appears incomplete, attempting to fix...')
-      // Count braces to see how many are missing
-      const openBraces = (jsonContent.match(/{/g) || []).length
-      const closeBraces = (jsonContent.match(/}/g) || []).length
-      const missingBraces = openBraces - closeBraces
-      
-      // Add missing closing braces
-      for (let i = 0; i < missingBraces; i++) {
-        jsonContent += '}'
-      }
-    }
-    
-    return JSON.parse(jsonContent)
+    return JSON.parse(content)
   } catch (e) {
     console.error('Failed to parse AI response:', content)
     throw new Error('Invalid JSON response from AI')
