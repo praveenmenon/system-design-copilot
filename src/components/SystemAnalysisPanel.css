@@ -15,18 +15,18 @@
   justify-content: center;
 }
 
-.empty-state {
+.analysis-panel .empty-state {
   text-align: center;
   color: #6c757d;
 }
 
-.empty-state h3 {
+.analysis-panel .empty-state h3 {
   margin: 0 0 0.5rem 0;
   color: #212529;
   font-size: 1.25rem;
 }
 
-.empty-state p {
+.analysis-panel .empty-state p {
   margin: 0;
   font-size: 1rem;
   opacity: 0.8;

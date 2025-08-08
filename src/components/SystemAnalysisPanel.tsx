@@ -3,7 +3,7 @@ import './SystemAnalysisPanel.css'
 import type { SystemAnalysis } from '../types/diagram'
 
 interface SystemAnalysisPanelProps {
-  analysis: SystemAnalysis | null
+  diagramData: any | null
 }
 
 type SectionKey = 'requirements' | 'capacity' | 'apis' | 'database' | 'challenges' | 'tradeoffs'
@@ -17,8 +17,10 @@ const sections = [
   { key: 'tradeoffs' as SectionKey, label: 'Trade-offs', icon: '⚖️' }
 ]
 
-export default function SystemAnalysisPanel({ analysis }: SystemAnalysisPanelProps) {
+export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanelProps) {
   const [activeSection, setActiveSection] = useState<SectionKey>('requirements')
+
+  const analysis = diagramData?.analysis
 
   if (!analysis) {
     return (

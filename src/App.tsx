@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import './App.css'
 import PromptInput from './components/PromptInput'
-import DiagramCanvas from './components/DiagramCanvas'
+import ExcalidrawCanvas from './components/ExcalidrawCanvas'
 import SystemAnalysisPanel from './components/SystemAnalysisPanel'
 import type { DiagramData } from './types/diagram'
 
 function App() {
   const [diagramData, setDiagramData] = useState<DiagramData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [viewMode, setViewMode] = useState<'canvas' | 'analysis' | 'split'>('split')
+  const [currentView, setCurrentView] = useState<'canvas' | 'analysis' | 'split'>('canvas')
 
   const handleGenerateDiagram = async (prompt: string) => {
     setIsLoading(true)
@@ -16,6 +16,7 @@ function App() {
       const { generateAIDiagram } = await import('./services/aiDiagramGenerator')
       const diagram = await generateAIDiagram(prompt)
       setDiagramData(diagram)
+      setCurrentView('split') // Switch to split view when diagram is generated
     } catch (error) {
       console.error('Error generating diagram:', error)
       // Fallback to mock data if AI service completely fails
@@ -23,6 +24,7 @@ function App() {
         const { generateMockDiagram } = await import('./services/mockDiagramGenerator')
         const mockDiagram = await generateMockDiagram(prompt)
         setDiagramData(mockDiagram)
+        setCurrentView('split') // Switch to split view when diagram is generated
       } catch (mockError) {
         console.error('Mock generation also failed:', mockError)
       }
@@ -48,39 +50,61 @@ function App() {
         
         <div className="view-controls">
           <button 
-            className={viewMode === 'canvas' ? 'active' : ''}
-            onClick={() => setViewMode('canvas')}
+            onClick={() => setCurrentView('canvas')}
+            className={currentView === 'canvas' ? 'active' : ''}
           >
-            📊 Canvas Only
+            Canvas
           </button>
           <button 
-            className={viewMode === 'analysis' ? 'active' : ''}
-            onClick={() => setViewMode('analysis')}
+            onClick={() => setCurrentView('analysis')}
+            className={currentView === 'analysis' ? 'active' : ''}
           >
-            📋 Analysis Only
+            Analysis
           </button>
           <button 
-            className={viewMode === 'split' ? 'active' : ''}
-            onClick={() => setViewMode('split')}
+            onClick={() => setCurrentView('split')}
+            className={currentView === 'split' ? 'active' : ''}
           >
-            🔄 Split View
+            Split View
+          </button>
+          <button 
+            onClick={() => handleGenerateDiagram('Design a simple e-commerce microservices architecture')}
+            style={{ backgroundColor: '#28a745', color: '#000000' }}
+          >
+            Test Diagram
           </button>
         </div>
-
-        <div className={`content-panels ${viewMode}`}>
-          {(viewMode === 'canvas' || viewMode === 'split') && (
+        
+        <div className={`content-panels ${currentView === 'split' ? 'split' : 'single'}`}>
+          {currentView === 'canvas' && (
             <div className="canvas-section">
-              <DiagramCanvas 
+              <ExcalidrawCanvas 
                 diagramData={diagramData}
-                onUpdateDiagram={setDiagramData}
+                onDiagramChange={setDiagramData}
               />
             </div>
           )}
           
-          {(viewMode === 'analysis' || viewMode === 'split') && (
+          {currentView === 'analysis' && diagramData && (
             <div className="analysis-section">
-              <SystemAnalysisPanel analysis={diagramData?.analysis || null} />
+              <SystemAnalysisPanel diagramData={diagramData} />
             </div>
+          )}
+          
+          {currentView === 'split' && (
+            <>
+              <div className="canvas-section">
+                <ExcalidrawCanvas 
+                  diagramData={diagramData}
+                  onDiagramChange={setDiagramData}
+                />
+              </div>
+              {diagramData && (
+                <div className="analysis-section">
+                  <SystemAnalysisPanel diagramData={diagramData} />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
