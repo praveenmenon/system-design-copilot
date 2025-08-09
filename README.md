@@ -83,6 +83,28 @@ The AI now provides:
 - **Connection Labels**: Clear request/response flow descriptions on arrows
 - **Visual Clarity**: Database ellipses, cache diamonds, and bidirectional arrows
 
+## Large Blobs Pattern
+
+The Large Blobs pattern handles massive file uploads by bypassing application servers with presigned URLs, storing metadata separately from blob storage, and serving downloads through a CDN.
+
+Example pattern output:
+
+```json
+{
+  "patterns": [
+    {
+      "id": "large-blobs",
+      "scope": "Direct-to-object storage uploads with metadata stored separately from binary blobs.",
+      "majorFunctionalRequirements": [
+        "Generate presigned upload URL",
+        "Direct client upload/download to blob storage",
+        "Metadata service persists file records & lifecycle"
+      ]
+    }
+  ]
+}
+```
+
 ## Architecture
 
 - **Frontend**: React + TypeScript + Vite

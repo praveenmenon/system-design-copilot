@@ -1,8 +1,10 @@
 import type { DiagramData } from '../types/diagram'
+import { selectPatterns, stripPatternFlags } from './patternSelector'
+import { applyPatterns } from './patternApplier'
 
 const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
-Include 5-7 key architectural challenges in the analysis.
+Include 5-7 key architectural challenges in the analysis. Mention microservices, CDNs, change data capture (CDC), and sharding strategies when relevant.
 
 The JSON should have this exact structure:
 {
@@ -166,6 +168,23 @@ The JSON should have this exact structure:
             }
           ]
         }
+      }
+    },
+    "enhancements": {
+      "caching": {
+        "dataCached": "What data is cached",
+        "keyFormat": "Cache key naming convention",
+        "ttl": "Time-to-live value",
+        "invalidation": "Cache invalidation strategy"
+      },
+      "queues": {
+        "purpose": "Why queues are used",
+        "workflow": "Message processing workflow"
+      },
+      "search": {
+        "engine": "Search engine technology",
+        "indexedFields": ["Fields that are indexed"],
+        "resultCaching": "How search results are cached"
       }
     },
     "challenges": [
@@ -346,18 +365,23 @@ async function callAnthropic(prompt: string): Promise<DiagramData> {
 }
 
 export const generateAIDiagram = async (prompt: string): Promise<DiagramData> => {
+  const patterns = selectPatterns(prompt)
+  const cleanedPrompt = stripPatternFlags(prompt)
   const provider = import.meta.env.VITE_AI_PROVIDER || 'openai'
 
   try {
+    let diagram: DiagramData
     if (provider === 'anthropic') {
-      return await callAnthropic(prompt)
+      diagram = await callAnthropic(cleanedPrompt)
     } else {
-      return await callOpenAI(prompt)
+      diagram = await callOpenAI(cleanedPrompt)
     }
+
+    return applyPatterns(diagram, patterns)
   } catch (error) {
     console.warn('AI service failed, falling back to mock data:', error)
     // Fallback to mock data if AI service fails
     const { generateMockDiagram } = await import('./mockDiagramGenerator')
-    return generateMockDiagram(prompt)
+    return generateMockDiagram(cleanedPrompt)
   }
 }
