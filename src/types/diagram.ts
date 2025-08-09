@@ -51,6 +51,17 @@ export interface SystemAnalysis {
       resultCaching?: string
     }
   }
+  patterns?: {
+    id: string
+    name: string
+    scope: string
+    majorFunctionalRequirements: string[]
+    outOfScope: string[]
+    nonFunctionalRequirements: string[]
+    coreEntities: string[]
+    dbSchemaMd: string
+    rationaleMd: string
+  }[]
   challenges: {
     title: string
     issueDetail: string

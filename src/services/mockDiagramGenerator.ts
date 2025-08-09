@@ -1,4 +1,5 @@
 import type { DiagramData } from '../types/diagram'
+import { selectPatterns } from './patternSelector'
 
 const analysisTemplates = {
   'chat-app': {
@@ -847,6 +848,7 @@ export const generateMockDiagram = async (prompt: string): Promise<DiagramData> 
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1500))
 
+  const patterns = selectPatterns(prompt)
   const normalizedPrompt = prompt.toLowerCase()
   
   let selectedTemplate = 'chat-app' // default
@@ -866,9 +868,41 @@ export const generateMockDiagram = async (prompt: string): Promise<DiagramData> 
   const template = componentTemplates[selectedTemplate as keyof typeof componentTemplates]
   const analysis = analysisTemplates[selectedTemplate as keyof typeof analysisTemplates] || analysisTemplates['chat-app']
   
-  return {
+  const base: DiagramData = {
     components: template.components.map(comp => ({ ...comp })),
     connections: template.connections.map(conn => ({ ...conn })),
     analysis: analysis
   }
+
+  patterns.forEach(p => {
+    const pDiagram = p.diagram()
+    base.components.push(...pDiagram.components)
+    base.connections.push(...pDiagram.connections)
+
+    base.analysis ||= {
+      requirements: { functional: [], nonFunctional: [], outOfScope: [] },
+      capacity: { dau: '', peakQps: '', storage: '', bandwidth: '' },
+      apis: [],
+      database: { choice: '', rationale: '' },
+      challenges: [],
+      tradeoffs: { summary: '' }
+    }
+
+    base.analysis.patterns = [
+      ...(base.analysis.patterns || []),
+      {
+        id: p.id,
+        name: p.name,
+        scope: p.scope,
+        majorFunctionalRequirements: p.major_functional_requirements.slice(0, 3),
+        outOfScope: p.out_of_scope,
+        nonFunctionalRequirements: p.non_functional_requirements,
+        coreEntities: p.core_entities,
+        dbSchemaMd: p.db_schema_md,
+        rationaleMd: p.rationale_md
+      }
+    ]
+  })
+
+  return base
 }

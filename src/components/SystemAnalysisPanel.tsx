@@ -12,6 +12,7 @@ type SectionKey =
   | 'apis'
   | 'database'
   | 'enhancements'
+  | 'patterns'
   | 'challenges'
   | 'tradeoffs'
 
@@ -21,6 +22,7 @@ const sections = [
   { key: 'apis' as SectionKey, label: 'APIs', icon: '🔌' },
   { key: 'database' as SectionKey, label: 'Database', icon: '🗄️' },
   { key: 'enhancements' as SectionKey, label: 'Enhancements', icon: '✨' },
+  { key: 'patterns' as SectionKey, label: 'Patterns', icon: '🧩' },
   { key: 'challenges' as SectionKey, label: 'Challenges', icon: '⚡' },
   { key: 'tradeoffs' as SectionKey, label: 'Trade-offs', icon: '⚖️' }
 ]
@@ -533,6 +535,57 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
     )
   }
 
+  const renderPatterns = () => (
+    <div className="section-content">
+      {analysis.patterns?.map(pattern => (
+        <div key={pattern.id} className="subsection">
+          <h4>{pattern.name}</h4>
+          <p>{pattern.scope}</p>
+          <div className="subsection">
+            <h5>Major Functional Requirements</h5>
+            <ul>
+              {pattern.majorFunctionalRequirements.map((req, idx) => (
+                <li key={idx} className="core-requirement">{req}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="subsection">
+            <h5>Non-Functional Requirements</h5>
+            <ul>
+              {pattern.nonFunctionalRequirements.map((req, idx) => (
+                <li key={idx} className="nfr">{req}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="subsection">
+            <h5>Out of Scope</h5>
+            <ul>
+              {pattern.outOfScope.map((req, idx) => (
+                <li key={idx} className="out-of-scope">{req}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="subsection">
+            <h5>Core Entities</h5>
+            <ul>
+              {pattern.coreEntities.map((ent, idx) => (
+                <li key={idx}>{ent}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="subsection">
+            <h5>DB Schema</h5>
+            <pre>{pattern.dbSchemaMd}</pre>
+          </div>
+          <div className="subsection">
+            <h5>Rationale</h5>
+            <pre>{pattern.rationaleMd}</pre>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
   const renderChallenges = () => (
     <div className="section-content">
       {analysis.challenges.map((challenge, index) => (
@@ -601,6 +654,8 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
         return renderDatabase()
       case 'enhancements':
         return renderEnhancements()
+      case 'patterns':
+        return renderPatterns()
       case 'challenges':
         return renderChallenges()
       case 'tradeoffs':

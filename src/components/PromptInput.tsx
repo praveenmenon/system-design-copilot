@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { selectPatterns } from '../services/patternSelector'
 import './PromptInput.css'
 
 interface PromptInputProps {
@@ -8,11 +9,21 @@ interface PromptInputProps {
 
 const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
   const [prompt, setPrompt] = useState('')
+  const [includeLargeBlobs, setIncludeLargeBlobs] = useState(false)
+  const [detected, setDetected] = useState(false)
+
+  useEffect(() => {
+    setDetected(selectPatterns(prompt).some(p => p.id === 'large-blobs'))
+  }, [prompt])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && !isLoading) {
-      onGenerate(prompt.trim())
+      let finalPrompt = prompt.trim()
+      if (includeLargeBlobs) {
+        finalPrompt += ' --pattern=large-blobs'
+      }
+      onGenerate(finalPrompt)
     }
   }
 
@@ -46,6 +57,19 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
         </div>
       </form>
       
+      <div className="pattern-controls">
+        <label>
+          <input
+            type="checkbox"
+            checked={includeLargeBlobs}
+            onChange={(e) => setIncludeLargeBlobs(e.target.checked)}
+            disabled={isLoading}
+          />
+          Include Large Blobs pattern
+        </label>
+        {detected && <span className="pattern-badge">Large Blobs detected</span>}
+      </div>
+
       <div className="example-prompts">
         <h3>Try these examples:</h3>
         <div className="examples-grid">
