@@ -3,31 +3,36 @@ import './App.css'
 import PromptInput from './components/PromptInput'
 import ExcalidrawCanvas from './components/ExcalidrawCanvas'
 import SystemAnalysisPanel from './components/SystemAnalysisPanel'
-import type { DiagramData } from './types/diagram'
 
 function App() {
-  const [diagramData, setDiagramData] = useState<DiagramData | null>(null)
+  const [diagramData, setDiagramData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [currentView, setCurrentView] = useState<'canvas' | 'analysis' | 'split'>('canvas')
+  const [auditIssues, setAuditIssues] = useState<string[]>([])
 
-  const handleGenerateDiagram = async (prompt: string) => {
+  const handleGenerateDiagram = async (prompt: string, forced: string[]) => {
     setIsLoading(true)
     try {
-      const { generateAIDiagram } = await import('./services/aiDiagramGenerator')
-      const diagram = await generateAIDiagram(prompt)
+      const { generateDesign } = await import('./services/aiDiagramGenerator')
+      const diagram = await generateDesign(prompt, forced)
       setDiagramData(diagram)
-      setCurrentView('split') // Switch to split view when diagram is generated
+      setCurrentView('split')
+      const { auditOnce } = await import('./audit/auditor')
+      const audit = await auditOnce({
+        prompt,
+        graph: diagram.graph,
+        sections: {
+          frs: diagram.majorFunctionalRequirements,
+          nfr: diagram.nonFunctionalRequirements,
+          outOfScope: diagram.outOfScope,
+          entities: diagram.coreEntities,
+          dbSchemaMd: diagram.dbSchemaMd,
+          rationaleMd: diagram.rationaleMd
+        }
+      })
+      setAuditIssues(audit.issues.map(i => i.message))
     } catch (error) {
       console.error('Error generating diagram:', error)
-      // Fallback to mock data if AI service completely fails
-      try {
-        const { generateMockDiagram } = await import('./services/mockDiagramGenerator')
-        const mockDiagram = await generateMockDiagram(prompt)
-        setDiagramData(mockDiagram)
-        setCurrentView('split') // Switch to split view when diagram is generated
-      } catch (mockError) {
-        console.error('Mock generation also failed:', mockError)
-      }
     } finally {
       setIsLoading(false)
     }
@@ -42,12 +47,19 @@ function App() {
       
       <div className="app-content">
         <div className="input-section">
-          <PromptInput 
+          <PromptInput
             onGenerate={handleGenerateDiagram}
             isLoading={isLoading}
           />
         </div>
         
+        {auditIssues.length > 0 && (
+          <div className="audit-banner">
+            {auditIssues.map((m, i) => (
+              <div key={i}>{m}</div>
+            ))}
+          </div>
+        )}
         <div className="view-controls">
           <button 
             onClick={() => setCurrentView('canvas')}

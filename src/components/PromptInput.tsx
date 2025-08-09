@@ -1,18 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { selectPatterns } from '../patterns'
 import './PromptInput.css'
 
 interface PromptInputProps {
-  onGenerate: (prompt: string) => void
+  onGenerate: (prompt: string, forced: string[]) => void
   isLoading: boolean
 }
 
 const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
   const [prompt, setPrompt] = useState('')
+  const [detected, setDetected] = useState(false)
+  const [forceLarge, setForceLarge] = useState(false)
+
+  useEffect(() => {
+    setDetected(selectPatterns(prompt).some(p => p.id === 'large-blobs'))
+  }, [prompt])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && !isLoading) {
-      onGenerate(prompt.trim())
+      const forced = forceLarge ? ['large-blobs'] : []
+      onGenerate(prompt.trim(), forced)
     }
   }
 
@@ -44,8 +52,16 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
             {isLoading ? 'Generating...' : 'Generate Diagram'}
           </button>
         </div>
+        <label className="pattern-toggle">
+          <input type="checkbox" checked={forceLarge} onChange={e => setForceLarge(e.target.checked)} />
+          Include Large Blobs pattern
+        </label>
       </form>
-      
+
+      <div className="pattern-controls">
+        {detected && <span className="pattern-badge">Large Blobs detected</span>}
+      </div>
+
       <div className="example-prompts">
         <h3>Try these examples:</h3>
         <div className="examples-grid">

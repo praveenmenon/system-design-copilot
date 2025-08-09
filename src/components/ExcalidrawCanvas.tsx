@@ -2,12 +2,11 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 // Using any types temporarily to avoid complex type imports
-import type { DiagramData } from '../types/diagram'
 import './ExcalidrawCanvas.css'
 
 interface ExcalidrawCanvasProps {
-  diagramData: DiagramData | null
-  onDiagramChange?: (data: DiagramData | null) => void
+  diagramData: any
+  onDiagramChange?: (data: any) => void
 }
 
 // Component type to Excalidraw element mapping
@@ -30,7 +29,7 @@ export default function ExcalidrawCanvas({ diagramData, onDiagramChange }: Excal
   // Debug logging (removed for production)
 
   // Convert our diagram data to Excalidraw elements
-  const convertToExcalidrawElements = useCallback((data: DiagramData): any[] => {
+  const convertToExcalidrawElements = useCallback((data: any): any[] => {
     if (!data) return []
 
     const elements: any[] = []
@@ -377,38 +376,18 @@ export default function ExcalidrawCanvas({ diagramData, onDiagramChange }: Excal
     if (!diagramData) {
       return {
         elements: [],
-        appState: {
-          viewBackgroundColor: '#f8f9fa',
-          currentItemStrokeColor: '#333333',
-          currentItemBackgroundColor: '#ffffff',
-          currentItemFillStyle: 'solid',
-          currentItemStrokeWidth: 2,
-          currentItemRoughness: 1,
-          currentItemOpacity: 100,
-          currentItemFontFamily: 1,
-          currentItemFontSize: 16,
-          currentItemTextAlign: 'center',
-          currentItemStrokeStyle: 'solid'
-        }
+        appState: { viewBackgroundColor: '#f8f9fa' }
       }
     }
-    
+
+    if (diagramData.diagram?.scene) {
+      return diagramData.diagram.scene
+    }
+
     const elements = convertToExcalidrawElements(diagramData)
     return {
-      elements: elements,
-      appState: {
-        viewBackgroundColor: '#f8f9fa',
-        currentItemStrokeColor: '#333333',
-        currentItemBackgroundColor: '#ffffff',
-        currentItemFillStyle: 'solid',
-        currentItemStrokeWidth: 2,
-        currentItemRoughness: 1,
-        currentItemOpacity: 100,
-        currentItemFontFamily: 1,
-        currentItemFontSize: 16,
-        currentItemTextAlign: 'center',
-        currentItemStrokeStyle: 'solid'
-      }
+      elements,
+      appState: { viewBackgroundColor: '#f8f9fa' }
     }
   }, [diagramData, convertToExcalidrawElements])
 
