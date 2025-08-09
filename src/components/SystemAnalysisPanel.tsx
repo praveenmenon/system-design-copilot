@@ -495,38 +495,38 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
         <div className="subsection">
           <h4>Caching</h4>
           <p>
-            <strong>Data Cached:</strong> {caching.dataCached}
+            <strong>Data Cached:</strong> {caching?.dataCached || 'N/A'}
           </p>
           <p>
-            <strong>Key Format:</strong> {caching.keyFormat}
+            <strong>Key Format:</strong> {caching?.keyFormat || 'N/A'}
           </p>
           <p>
-            <strong>TTL:</strong> {caching.ttl}
+            <strong>TTL:</strong> {caching?.ttl || 'N/A'}
           </p>
           <p>
-            <strong>Invalidation:</strong> {caching.invalidation}
+            <strong>Invalidation:</strong> {caching?.invalidation || 'N/A'}
           </p>
         </div>
         <div className="subsection">
           <h4>Queues</h4>
           <p>
-            <strong>Purpose:</strong> {queues.purpose}
+            <strong>Purpose:</strong> {queues?.purpose || 'N/A'}
           </p>
           <p>
-            <strong>Workflow:</strong> {queues.workflow}
+            <strong>Workflow:</strong> {queues?.workflow || 'N/A'}
           </p>
         </div>
         <div className="subsection">
           <h4>Search</h4>
           <p>
-            <strong>Engine:</strong> {search.engine}
+            <strong>Engine:</strong> {search?.engine || 'N/A'}
           </p>
           <p>
             <strong>Indexed Fields:</strong>{' '}
-            {search.indexedFields.join(', ')}
+            {search?.indexedFields?.join(', ') || 'N/A'}
           </p>
           <p>
-            <strong>Result Caching:</strong> {search.resultCaching}
+            <strong>Result Caching:</strong> {search?.resultCaching || 'N/A'}
           </p>
         </div>
       </div>
