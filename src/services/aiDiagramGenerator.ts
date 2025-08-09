@@ -2,7 +2,7 @@ import type { DiagramData } from '../types/diagram'
 
 const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
-Include 5-7 key architectural challenges in the analysis.
+Include 5-7 key architectural challenges in the analysis. Mention microservices, CDNs, change data capture (CDC), and sharding strategies when relevant.
 
 The JSON should have this exact structure:
 {
@@ -166,6 +166,23 @@ The JSON should have this exact structure:
             }
           ]
         }
+      }
+    },
+    "enhancements": {
+      "caching": {
+        "dataCached": "What data is cached",
+        "keyFormat": "Cache key naming convention",
+        "ttl": "Time-to-live value",
+        "invalidation": "Cache invalidation strategy"
+      },
+      "queues": {
+        "purpose": "Why queues are used",
+        "workflow": "Message processing workflow"
+      },
+      "search": {
+        "engine": "Search engine technology",
+        "indexedFields": ["Fields that are indexed"],
+        "resultCaching": "How search results are cached"
       }
     },
     "challenges": [
