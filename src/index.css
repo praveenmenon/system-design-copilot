@@ -69,7 +69,6 @@ button:not(.excalidraw button):not([class*="ToolIcon"]):not([class*="Island"] bu
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -88,8 +87,5 @@ button:not(.excalidraw button):not([class*="ToolIcon"]):not([class*="Island"] bu
   }
   a:hover {
     color: #747bff;
-  }
-  button:not(.excalidraw button):not([class*="ToolIcon"]):not([class*="Island"] button) {
-    background-color: #f9f9f9;
   }
 }
