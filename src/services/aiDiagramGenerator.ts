@@ -2,6 +2,8 @@ import type { DiagramData } from '../types/diagram'
 
 const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
+Include 5-7 key architectural challenges in the analysis.
+
 The JSON should have this exact structure:
 {
   "components": [
@@ -167,28 +169,21 @@ The JSON should have this exact structure:
       }
     },
     "challenges": [
-      {
-        "title": "Major system challenge",
-        "solutions": [
-          {
-            "type": "bad",
-            "title": "Poor solution",
-            "description": "Why this approach fails"
-          },
-          {
-            "type": "good",
-            "title": "Decent solution", 
-            "description": "A workable but not optimal approach"
-          },
-          {
-            "type": "great",
-            "title": "Excellent solution",
-            "description": "The recommended approach and why"
-          }
-        ],
-        "dataFlow": "Optional data flow description"
-      }
-    ],
+        {
+          "title": "Major system challenge",
+          "issueDetail": "Why it matters at scale",
+          "solutions": [
+            {
+              "title": "Solution approach",
+              "pros": ["Benefit 1", "Benefit 2"],
+              "cons": ["Drawback 1", "Drawback 2"],
+              "nfrImpact": "How this option impacts non-functional requirements"
+            }
+          ],
+          "chosenSolution": "Selected option and justification based on capacity calculations",
+          "dataFlow": "Optional data flow description"
+        }
+      ],
     "tradeoffs": {
       "summary": "Key architectural tradeoffs and decisions made"
     }

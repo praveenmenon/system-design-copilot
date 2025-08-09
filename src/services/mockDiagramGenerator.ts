@@ -315,48 +315,60 @@ const analysisTemplates = {
       rationale: "PostgreSQL for user data and room metadata, Redis for real-time presence and caching, MongoDB for message storage due to flexible schema and horizontal scaling",
       schema: `Users: {id, username, email, password_hash, created_at}\nRooms: {id, name, type, created_by, created_at}\nMessages: {id, room_id, user_id, content, timestamp, message_type}`
     },
+    
+
     challenges: [
       {
         title: "Real-time Message Delivery at Scale",
+        issueDetail: "Millions of concurrent connections require efficient fan-out without overwhelming servers or introducing latency.",
         solutions: [
           {
-            type: "bad" as const,
             title: "Direct database polling",
-            description: "Constantly polling database for new messages creates massive load and poor user experience with high latency"
+            pros: ["Simple implementation"],
+            cons: ["High latency", "Heavy database load"],
+            nfrImpact: "Poor scalability and user experience",
           },
           {
-            type: "good" as const, 
             title: "WebSocket with single server",
-            description: "WebSocket provides real-time communication but single server limits scalability and creates single point of failure"
+            pros: ["Low latency communication"],
+            cons: ["Single point of failure", "Limited concurrent connections"],
+            nfrImpact: "Hurts availability and scalability",
           },
           {
-            type: "great" as const,
             title: "WebSocket + Message Queue + Load Balancing",
-            description: "Multiple WebSocket servers with message queue (Redis/RabbitMQ) for inter-server communication, load balancer for distribution"
-          }
+            pros: ["Horizontal scalability", "Fault tolerance"],
+            cons: ["Operational complexity", "Higher infrastructure cost"],
+            nfrImpact: "Improves scalability and reliability at increased complexity",
+          },
         ],
-        dataFlow: "User A sends message → API Server → Message Queue → WebSocket Servers → User B receives message"
+        chosenSolution: "Distributed WebSocket servers with a message queue handle 500K messages/sec while keeping latency under 100ms.",
+        dataFlow: "User A sends message → API Server → Message Queue → WebSocket Servers → User B receives message",
       },
       {
         title: "Message Storage and Retrieval",
+        issueDetail: "Storing billions of messages requires high write throughput and efficient history queries.",
         solutions: [
           {
-            type: "bad" as const,
             title: "Single PostgreSQL instance",
-            description: "Relational database becomes bottleneck with high write volume and complex queries for message history"
+            pros: ["Strong consistency"],
+            cons: ["Write bottleneck", "Difficult to scale"],
+            nfrImpact: "Limits scalability",
           },
           {
-            type: "good" as const,
             title: "Sharded PostgreSQL",
-            description: "Horizontal sharding distributes load but adds complexity for cross-shard queries and maintenance"
+            pros: ["Horizontal write scaling"],
+            cons: ["Complex cross-shard queries", "Operational overhead"],
+            nfrImpact: "Better scalability but reduced maintainability",
           },
           {
-            type: "great" as const,
             title: "MongoDB with Time-based Partitioning",
-            description: "Document database optimized for write-heavy workloads, automatic sharding, and efficient range queries for message history"
-          }
-        ]
-      }
+            pros: ["High write throughput", "Efficient range queries"],
+            cons: ["Eventual consistency", "Requires operational expertise"],
+            nfrImpact: "Optimizes scalability with acceptable consistency trade-offs",
+          },
+        ],
+        chosenSolution: "MongoDB partitioned by time accommodates 50TB yearly growth with low-latency reads.",
+      },
     ],
     tradeoffs: {
       summary: "Chose availability and partition tolerance over strict consistency (AP in CAP theorem). Messages may arrive out of order occasionally but system remains highly available. Used polyglot persistence trading complexity for optimal performance per data type."
@@ -551,27 +563,34 @@ const analysisTemplates = {
       rationale: "NoSQL for horizontal scaling and fast key-value lookups, Redis for caching frequently accessed URLs and reducing database load",
       schema: `URLs: {short_code, original_url, created_at, expires_at, click_count}\nAnalytics: {short_code, timestamp, ip_address, user_agent, referrer}`
     },
+
+
     challenges: [
       {
         title: "Generating Unique Short Codes",
+        issueDetail: "Billions of URLs require unique identifiers without causing contention or collisions.",
         solutions: [
           {
-            type: "bad" as const,
             title: "Random generation with collision check",
-            description: "High probability of collisions at scale, requires multiple database roundtrips"
+            pros: ["Simple to implement"],
+            cons: ["High collision probability at scale", "Multiple database round trips"],
+            nfrImpact: "Increases latency and database load",
           },
           {
-            type: "good" as const,
             title: "Auto-incrementing counter",
-            description: "Guarantees uniqueness but creates single point of failure and predictable URLs"
+            pros: ["Guaranteed uniqueness"],
+            cons: ["Single point of failure", "Predictable sequence"],
+            nfrImpact: "Limits availability and security",
           },
           {
-            type: "great" as const,
             title: "Base62 encoding with distributed counters",
-            description: "Multiple counter ranges assigned to different servers, Base62 encoding for compact URLs"
-          }
-        ]
-      }
+            pros: ["Scales horizontally", "Generates compact IDs"],
+            cons: ["Requires range coordination", "Higher operational complexity"],
+            nfrImpact: "Enhances scalability with moderate complexity",
+          },
+        ],
+        chosenSolution: "Distributed counters encoded in Base62 support 100M new URLs per day without collisions.",
+      },
     ],
     tradeoffs: {
       summary: "Optimized for read-heavy workload with aggressive caching. Chose eventual consistency for better availability. Short codes are not cryptographically secure but prioritized simplicity and performance."
