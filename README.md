@@ -22,6 +22,22 @@ A web-based whiteboard application that generates system architecture diagrams f
 - **Export Functionality**: Export diagrams as PNG images
 - **Responsive Design**: Works on desktop and mobile devices
 
+## Multi-step Agent Workflow
+
+This app orchestrates a multi-pass agent pipeline for higher-quality outputs:
+
+- **Planner**: Interprets the prompt, makes assumptions explicit, enumerates FRs/NFRs, key components, data flows, APIs, and capacity estimates
+- **Designer**: Produces the full architecture and analysis JSON strictly matching the schema the UI expects
+- **Critic**: Reviews the design against the plan and quality guidelines, returning a JSON report with issues and must-fix items
+- **Refiner**: Applies critic feedback and emits the finalized design JSON
+
+Implementation details:
+
+- Orchestration lives in `src/services/aiDiagramGenerator.ts`
+- Provider-agnostic chat layer supports `openai` and `anthropic` via `VITE_AI_PROVIDER`
+- Robust JSON extraction handles fenced code blocks and extraneous text
+- Pattern application (`--patterns=...`) runs after the Refiner to augment the final design
+
 ## Quick Start
 
 1. **Clone and Install**:
@@ -42,6 +58,9 @@ A web-based whiteboard application that generates system architecture diagrams f
    # OR
    VITE_ANTHROPIC_API_KEY=your_anthropic_api_key_here
    VITE_AI_PROVIDER=openai  # or 'anthropic'
+# Optional model overrides
+VITE_OPENAI_MODEL=gpt-4o
+VITE_ANTHROPIC_MODEL=claude-3-5-sonnet-latest
    ```
 
 3. **Run Development Server**:
@@ -61,6 +80,16 @@ A web-based whiteboard application that generates system architecture diagrams f
 3. The AI will generate a visual diagram with components and connections
 4. Drag components to reposition them
 5. Export your diagram as PNG
+
+### Pattern Flags (optional)
+
+You can hint patterns to apply with flags inside your prompt:
+
+```
+Design a scalable chat application --patterns=large-blobs
+```
+
+Patterns are detected automatically when possible; flags force inclusion.
 
 ## Example Prompts
 
@@ -110,6 +139,7 @@ Example pattern output:
 - **Frontend**: React + TypeScript + Vite
 - **Canvas**: Excalidraw for interactive diagrams with enhanced shapes
 - **AI Integration**: OpenAI GPT-4 or Anthropic Claude with detailed system analysis
+  - Multi-step orchestration (Planner → Designer → Critic → Refiner) in `src/services/aiDiagramGenerator.ts`
 - **Visual Components**: 
   - Rectangles for services and servers
   - Ellipses for databases (SQL/NoSQL)
@@ -142,7 +172,7 @@ src/
 │   ├── SystemAnalysisPanel.tsx   # Detailed system analysis display
 │   └── *.css                    # Component styles
 ├── services/
-│   ├── aiDiagramGenerator.ts     # Enhanced AI service with detailed schema analysis
+│   ├── aiDiagramGenerator.ts     # Multi-step Planner→Designer→Critic→Refiner orchestration
 │   └── mockDiagramGenerator.ts   # Fallback mock data
 ├── App.tsx                      # Main application
 └── types/
@@ -156,3 +186,9 @@ src/
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
+
+## Troubleshooting
+
+- Set `VITE_AI_PROVIDER` and the corresponding API key; otherwise the app falls back to mock generation
+- If a provider returns non-JSON, the orchestrator attempts to extract the JSON object; persistent failures will use mock data
+- Very long prompts may exceed provider token limits; shorten prompts or lower detail

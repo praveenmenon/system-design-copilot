@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { selectPatterns } from './patternSelector'
 import { describe, it, expect } from 'vitest'
 

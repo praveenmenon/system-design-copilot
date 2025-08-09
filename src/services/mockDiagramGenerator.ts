@@ -3,6 +3,78 @@ import { selectPatterns } from './patternSelector'
 import { applyPatterns } from './patternApplier'
 
 const analysisTemplates = {
+  'file-storage': {
+    requirements: {
+      functional: [
+        'Upload and download files (multi‑part, resumable)',
+        'Generate presigned URLs for direct S3/GCS uploads',
+        'Folder hierarchy, sharing and permissions',
+        'Metadata indexing and full‑text search',
+        'Versioning and soft delete with recycle bin'
+      ],
+      nonFunctional: [
+        'Durability 11 9s for object storage',
+        'P95 upload init < 200ms via edge/CDN',
+        'Global distribution and low‑latency reads',
+        'Virus/malware scanning async with quarantine'
+      ],
+      outOfScope: [
+        'Real‑time collaborative editing',
+        'On‑device encryption (client‑managed keys)'
+      ]
+    },
+    capacity: {
+      dau: '20M users',
+      peakQps: 'Writes: 50K/s, Reads: 800K/s',
+      storage: '5 PB objects + 50 TB metadata',
+      bandwidth: '100 Gbps peak egress'
+    },
+    apis: [
+      {
+        endpoint: '/api/files/presign',
+        method: 'POST',
+        description: 'Create presigned URL for multipart upload',
+        requestType: 'JSON',
+        responseType: 'JSON',
+        requestBody: { example: { filename: 'report.pdf', bytes: 10485760, contentType: 'application/pdf' }, schema: 'Upload init' },
+        responseBody: { success: { example: { uploadId: 'uuid', url: 'https://s3...', parts: 5 }, schema: 'Presign info' } },
+        statusCodes: { '201': 'Created', '400': 'Bad Request' },
+        headers: { required: ['Authorization: Bearer {token}'] }
+      },
+      {
+        endpoint: '/api/files/{fileId}',
+        method: 'GET',
+        description: 'Get file metadata and download link',
+        responseType: 'JSON',
+        pathParams: { fileId: 'File identifier' },
+        responseBody: { success: { example: { id: 'f_123', name: 'report.pdf', size: 10485760, downloadUrl: 'https://cdn...' }, schema: 'File details' } }
+      }
+    ],
+    database: {
+      choice: 'PostgreSQL (metadata) + Object Storage (blobs) + Redis (sessions)',
+      rationale: 'Relational metadata, durable blob storage, edge‑accelerated downloads',
+      schema: `Files: {id, owner_id, name, size_bytes, content_type, checksum, version, status, created_at}
+Shares: {file_id, grantee_id, role, expires_at}
+UploadSessions: {id, file_id, upload_id, parts, status, expires_at}`
+    },
+    enhancements: {
+      caching: { dataCached: 'Download tokens and listing', keyFormat: 'file:{id}:link', ttl: '15m', invalidation: 'On revoke' },
+      queues: { purpose: 'Virus scan + thumbnail generation', workflow: 'S3 event → queue → workers' },
+      search: { engine: 'Elasticsearch', indexedFields: ['name', 'owner_id'], resultCaching: 'Popular queries 10m' }
+    },
+    challenges: [
+      {
+        title: 'Large file uploads at scale',
+        issueDetail: 'Avoid app server bottlenecks and enable resumable uploads',
+        solutions: [
+          { title: 'Upload via API servers', pros: ['Simple'], cons: ['Expensive egress', 'Bottlenecks'], nfrImpact: 'Poor scalability' },
+          { title: 'Presigned multipart uploads', pros: ['Scales via object store'], cons: ['Client complexity'], nfrImpact: 'Great scalability' }
+        ],
+        chosenSolution: 'Presigned multipart uploads with retry and checksum'
+      }
+    ],
+    tradeoffs: { summary: 'Strong availability, eventual consistency on listing; async scanning introduces delay before sharing.' }
+  },
   'chat-app': {
     requirements: {
       functional: [
@@ -633,6 +705,33 @@ const analysisTemplates = {
 }
 
 const componentTemplates = {
+  'file-storage': {
+    components: [
+      { id: 'user', type: 'user', label: 'Users', x: 80, y: 300 },
+      { id: 'cdn', type: 'cdn', label: 'CDN', x: 350, y: 120 },
+      { id: 'lb', type: 'load-balancer', label: 'Load Balancer', x: 350, y: 300 },
+      { id: 'api', type: 'api-server', label: 'API Gateway', x: 620, y: 300 },
+      { id: 'auth', type: 'service', label: 'Auth/STS', x: 620, y: 120 },
+      { id: 'presign', type: 'service', label: 'Presign Service', x: 900, y: 300 },
+      { id: 'obj', type: 'database', label: 'Object Storage', x: 1180, y: 180 },
+      { id: 'queue', type: 'queue', label: 'Events/Scan Queue', x: 1180, y: 360 },
+      { id: 'worker', type: 'service', label: 'Scan/Thumbnail Worker', x: 1460, y: 360 },
+      { id: 'meta', type: 'database', label: 'Metadata DB', x: 1460, y: 200 }
+    ],
+    connections: [
+      { from: 'user', to: 'cdn', label: 'GET /download' },
+      { from: 'user', to: 'lb', label: 'HTTPS' },
+      { from: 'lb', to: 'api', label: 'HTTP/2' },
+      { from: 'api', to: 'auth', label: 'STS Token' },
+      { from: 'api', to: 'presign', label: 'POST /presign' },
+      { from: 'presign', to: 'obj', label: 'Signed URL' },
+      { from: 'user', to: 'obj', label: 'PUT multipart' },
+      { from: 'obj', to: 'queue', label: 'ObjectCreated' },
+      { from: 'queue', to: 'worker', label: 'Process' },
+      { from: 'worker', to: 'meta', label: 'Persist metadata' },
+      { from: 'cdn', to: 'obj', label: 'Origin pull' }
+    ]
+  },
   'chat-app': {
     components: [
       { id: 'user', type: 'user', label: 'Users', x: 50, y: 200, details: 'Mobile/Web Clients' },
@@ -854,7 +953,9 @@ export const generateMockDiagram = async (prompt: string): Promise<DiagramData> 
   
   let selectedTemplate = 'chat-app' // default
 
-  if (normalizedPrompt.includes('url') || normalizedPrompt.includes('shortener') || normalizedPrompt.includes('link')) {
+  if (normalizedPrompt.includes('dropbox') || normalizedPrompt.includes('google drive') || normalizedPrompt.includes('gdrive') || normalizedPrompt.includes('one drive') || normalizedPrompt.includes('onedrive') || normalizedPrompt.includes('cloud storage') || normalizedPrompt.includes('file storage') || normalizedPrompt.includes('file hosting')) {
+    selectedTemplate = 'file-storage'
+  } else if (normalizedPrompt.includes('url') || normalizedPrompt.includes('shortener') || normalizedPrompt.includes('link')) {
     selectedTemplate = 'url-shortener'
   } else if (normalizedPrompt.includes('social') || normalizedPrompt.includes('feed') || normalizedPrompt.includes('timeline')) {
     selectedTemplate = 'social-media'

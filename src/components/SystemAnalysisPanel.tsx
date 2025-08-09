@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './SystemAnalysisPanel.css'
-import type { SystemAnalysis } from '../types/diagram'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// import type { SystemAnalysis } from '../types/diagram'
 
 interface SystemAnalysisPanelProps {
   diagramData: any | null
@@ -48,27 +49,27 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
     <div className="section-content">
       <div className="subsection">
         <h4>Functional Requirements</h4>
-        <ul>
-          {analysis.requirements.functional.map((req, index) => (
-            <li key={index} className="core-requirement">{req}</li>
-          ))}
-        </ul>
+         <ul>
+           {analysis.requirements.functional.map((req: string, index: number) => (
+             <li key={index} className="core-requirement">{req}</li>
+           ))}
+         </ul>
       </div>
       <div className="subsection">
         <h4>Non-Functional Requirements</h4>
-        <ul>
-          {analysis.requirements.nonFunctional.map((req, index) => (
-            <li key={index} className="nfr">{req}</li>
-          ))}
-        </ul>
+         <ul>
+           {analysis.requirements.nonFunctional.map((req: string, index: number) => (
+             <li key={index} className="nfr">{req}</li>
+           ))}
+         </ul>
       </div>
       <div className="subsection">
         <h4>Out of Scope</h4>
-        <ul>
-          {analysis.requirements.outOfScope.map((req, index) => (
-            <li key={index} className="out-of-scope">{req}</li>
-          ))}
-        </ul>
+         <ul>
+           {analysis.requirements.outOfScope.map((req: string, index: number) => (
+             <li key={index} className="out-of-scope">{req}</li>
+           ))}
+         </ul>
       </div>
     </div>
   )
@@ -120,7 +121,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
       
       return (
         <div className="json-example">
-          <h7>{title}</h7>
+          <strong>{title}</strong>
           <pre className="json-code">{JSON.stringify(data, null, 2)}</pre>
         </div>
       )
@@ -263,7 +264,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
                       <h6>📥 Response Body:</h6>
                       {api.responseBody.success && (
                         <div className="response-case success-response">
-                          <h7>✅ Success Response:</h7>
+                  <strong>✅ Success Response:</strong>
                           {api.responseBody.success.schema && (
                             <p className="schema-description">{api.responseBody.success.schema}</p>
                           )}
@@ -273,7 +274,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
                       
                       {api.responseBody.error && (
                         <div className="response-case error-response">
-                          <h7>❌ Error Response:</h7>
+                  <strong>❌ Error Response:</strong>
                           {api.responseBody.error.schema && (
                             <p className="schema-description">{api.responseBody.error.schema}</p>
                           )}
@@ -537,14 +538,14 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
 
   const renderPatterns = () => (
     <div className="section-content">
-      {analysis.patterns?.map(pattern => (
+      {analysis.patterns?.map((pattern: any) => (
         <div key={pattern.id} className="subsection">
           <h4>{pattern.name}</h4>
           <p>{pattern.scope}</p>
           <div className="subsection">
             <h5>Major Functional Requirements</h5>
             <ul>
-              {pattern.majorFunctionalRequirements.map((req, idx) => (
+               {pattern.majorFunctionalRequirements.map((req: string, idx: number) => (
                 <li key={idx} className="core-requirement">{req}</li>
               ))}
             </ul>
@@ -552,7 +553,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
           <div className="subsection">
             <h5>Non-Functional Requirements</h5>
             <ul>
-              {pattern.nonFunctionalRequirements.map((req, idx) => (
+               {pattern.nonFunctionalRequirements.map((req: string, idx: number) => (
                 <li key={idx} className="nfr">{req}</li>
               ))}
             </ul>
@@ -560,7 +561,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
           <div className="subsection">
             <h5>Out of Scope</h5>
             <ul>
-              {pattern.outOfScope.map((req, idx) => (
+               {pattern.outOfScope.map((req: string, idx: number) => (
                 <li key={idx} className="out-of-scope">{req}</li>
               ))}
             </ul>
@@ -568,7 +569,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
           <div className="subsection">
             <h5>Core Entities</h5>
             <ul>
-              {pattern.coreEntities.map((ent, idx) => (
+               {pattern.coreEntities.map((ent: string, idx: number) => (
                 <li key={idx}>{ent}</li>
               ))}
             </ul>
@@ -588,19 +589,19 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
 
   const renderChallenges = () => (
     <div className="section-content">
-      {analysis.challenges.map((challenge, index) => (
+      {analysis.challenges.map((challenge: any, index: number) => (
         <div key={index} className="challenge-item">
           <h3 className="challenge-title">{challenge.title}</h3>
           <p className="challenge-detail">{challenge.issueDetail}</p>
           <div className="solutions">
-            {challenge.solutions.map((solution, sIndex) => (
+            {challenge.solutions.map((solution: any, sIndex: number) => (
               <div key={sIndex} className="solution">
                 <h5>{solution.title}</h5>
                 <div className="solution-details">
                   <div className="pros">
                     <strong>Pros:</strong>
                     <ul>
-                      {solution.pros.map((pro, pIndex) => (
+                      {solution.pros.map((pro: string, pIndex: number) => (
                         <li key={pIndex}>{pro}</li>
                       ))}
                     </ul>
@@ -608,7 +609,7 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
                   <div className="cons">
                     <strong>Cons:</strong>
                     <ul>
-                      {solution.cons.map((con, cIndex) => (
+                      {solution.cons.map((con: string, cIndex: number) => (
                         <li key={cIndex}>{con}</li>
                       ))}
                     </ul>

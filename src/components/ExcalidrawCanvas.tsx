@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 // Using any types temporarily to avoid complex type imports
@@ -26,6 +26,7 @@ const componentTypeStyles = {
 
 export default function ExcalidrawCanvas({ diagramData, onDiagramChange }: ExcalidrawCanvasProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null)
+  void onDiagramChange
   
   // Debug logging (removed for production)
 
@@ -51,7 +52,7 @@ export default function ExcalidrawCanvas({ diagramData, onDiagramChange }: Excal
     })
 
     // Convert components to shapes with text
-    data.components.forEach((component, index) => {
+    data.components.forEach((component) => {
       // Ensure components start within viewport (offset from 0,0)
       const baseX = component.x + 100
       const baseY = component.y + 100
@@ -373,7 +374,7 @@ export default function ExcalidrawCanvas({ diagramData, onDiagramChange }: Excal
   }, [])
 
   // Store initial data instead of using API updates
-  const initialData = useMemo(() => {
+  const initialData: any = useMemo(() => {
     if (!diagramData) {
       return {
         elements: [],

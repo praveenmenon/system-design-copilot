@@ -2,7 +2,8 @@ import type { DiagramData } from '../types/diagram'
 import { selectPatterns, stripPatternFlags } from './patternSelector'
 import { applyPatterns } from './patternApplier'
 
-const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
+// Designer/Refiner output contract
+const DESIGN_OUTPUT_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
 Include 5-7 key architectural challenges in the analysis. Mention microservices, CDNs, change data capture (CDC), and sharding strategies when relevant.
 
@@ -278,54 +279,88 @@ For database analysis:
 
 Respond with ONLY the JSON object, no other text.`
 
-async function callOpenAI(prompt: string): Promise<DiagramData> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OpenAI API key not configured')
-  }
+// Planner contract
+const PLANNER_PROMPT = `You are the Planner. Interpret a user's system design problem and produce a structured plan that a Designer can implement.
 
+Return ONLY a compact JSON object with fields:
+{
+  "summary": "one-paragraph restatement of the problem",
+  "assumptions": ["explicit constraints and assumptions"],
+  "functionalRequirements": ["bullet points"],
+  "nonFunctionalRequirements": ["performance, scalability, reliability, security, cost"],
+  "keyComponents": ["list of major components/services to include"],
+  "dataFlows": ["key flows to support"],
+  "apis": ["critical external API surfaces to expose"],
+  "capacity": { "dau": "estimate", "peakQps": "estimate", "storage": "estimate", "bandwidth": "estimate" }
+}`
+
+// Critic contract
+const CRITIC_PROMPT = `You are the Critic. Review a candidate architecture against a plan and quality guidelines. Identify gaps, violations, and improvements.
+
+Return ONLY a JSON object:
+{
+  "pass": boolean,
+  "score": number, // 0-100
+  "issues": [
+    {
+      "title": string,
+      "severity": "low"|"medium"|"high",
+      "section": "requirements"|"capacity"|"apis"|"database"|"enhancements"|"patterns"|"challenges"|"tradeoffs"|"layout"|"components",
+      "detail": string,
+      "fix": string
+    }
+  ],
+  "mustFixSummary": string
+}`
+
+// Refiner instruction
+const REFINER_PROMPT = `You are the Refiner. Using the user's prompt, the Planner plan, and Critic feedback, produce an improved final design.
+Follow the Designer output contract strictly and return ONLY the JSON object.`
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
+
+function extractJson(text: string): string {
+  if (!text) return text
+  // Remove code fences if present
+  const fenceMatch = text.match(/```(?:json)?\s*[\s\S]*?```/)
+  if (fenceMatch) {
+    const inner = fenceMatch[0].replace(/```(?:json)?/g, '').replace(/```/g, '')
+    return inner.trim()
+  }
+  // Try to find first and last curly braces for JSON object
+  const first = text.indexOf('{')
+  const last = text.lastIndexOf('}')
+  if (first !== -1 && last !== -1 && last > first) {
+    return text.slice(first, last + 1).trim()
+  }
+  return text.trim()
+}
+
+async function chatOpenAI(messages: ChatMessage[], maxTokens = 3000, temperature = 0.7): Promise<string> {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY
+  if (!apiKey) throw new Error('OpenAI API key not configured')
+  const model = import.meta.env.VITE_OPENAI_MODEL || 'gpt-4'
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 3000
-    })
+    body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens })
   })
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`)
-  }
-
+  if (!response.ok) throw new Error(`OpenAI API error: ${response.status}`)
   const data = await response.json()
   const content = data.choices[0]?.message?.content
-
-  if (!content) {
-    throw new Error('No response from OpenAI')
-  }
-
-  try {
-    return JSON.parse(content)
-  } catch (e) {
-    console.error('Failed to parse AI response:', content)
-    throw new Error('Invalid JSON response from AI')
-  }
+  if (!content) throw new Error('No response from OpenAI')
+  return content
 }
 
-async function callAnthropic(prompt: string): Promise<DiagramData> {
+async function chatAnthropic(messages: ChatMessage[], maxTokens = 3000): Promise<string> {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-  if (!apiKey) {
-    throw new Error('Anthropic API key not configured')
-  }
-
+  if (!apiKey) throw new Error('Anthropic API key not configured')
+  const model = import.meta.env.VITE_ANTHROPIC_MODEL || 'claude-3-sonnet-20240229'
+  // Combine messages into a single user message for compatibility
+  const combined = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -333,54 +368,92 @@ async function callAnthropic(prompt: string): Promise<DiagramData> {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01'
     },
-    body: JSON.stringify({
-      model: 'claude-3-sonnet-20240229',
-      max_tokens: 3000,
-      messages: [
-        {
-          role: 'user',
-          content: `${SYSTEM_PROMPT}\n\nUser prompt: ${prompt}`
-        }
-      ]
-    })
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: combined }] })
   })
-
-  if (!response.ok) {
-    throw new Error(`Anthropic API error: ${response.status}`)
-  }
-
+  if (!response.ok) throw new Error(`Anthropic API error: ${response.status}`)
   const data = await response.json()
-  const content = data.content[0]?.text
+  const content = data.content?.[0]?.text
+  if (!content) throw new Error('No response from Anthropic')
+  return content
+}
 
-  if (!content) {
-    throw new Error('No response from Anthropic')
+async function chat(messages: ChatMessage[], maxTokens?: number): Promise<string> {
+  const provider = import.meta.env.VITE_AI_PROVIDER || 'openai'
+  if (provider === 'anthropic') {
+    return chatAnthropic(messages, maxTokens)
   }
+  return chatOpenAI(messages, maxTokens)
+}
 
-  try {
-    return JSON.parse(content)
-  } catch (e) {
-    console.error('Failed to parse AI response:', content)
-    throw new Error('Invalid JSON response from AI')
-  }
+interface PlannerPlan {
+  summary: string
+  assumptions: string[]
+  functionalRequirements: string[]
+  nonFunctionalRequirements: string[]
+  keyComponents: string[]
+  dataFlows: string[]
+  apis: string[]
+  capacity: { dau?: string; peakQps?: string; storage?: string; bandwidth?: string }
+}
+
+interface CriticReportIssue {
+  title: string
+  severity: 'low' | 'medium' | 'high'
+  section: string
+  detail: string
+  fix: string
+}
+
+interface CriticReport {
+  pass: boolean
+  score: number
+  issues: CriticReportIssue[]
+  mustFixSummary?: string
 }
 
 export const generateAIDiagram = async (prompt: string): Promise<DiagramData> => {
   const patterns = selectPatterns(prompt)
   const cleanedPrompt = stripPatternFlags(prompt)
-  const provider = import.meta.env.VITE_AI_PROVIDER || 'openai'
 
   try {
-    let diagram: DiagramData
-    if (provider === 'anthropic') {
-      diagram = await callAnthropic(cleanedPrompt)
-    } else {
-      diagram = await callOpenAI(cleanedPrompt)
+    // 1) Planner
+    const plannerMessages: ChatMessage[] = [
+      { role: 'system', content: PLANNER_PROMPT },
+      { role: 'user', content: `User prompt: ${cleanedPrompt}` }
+    ]
+    const plannerRaw = await chat(plannerMessages, 1500)
+    const plannerJson = JSON.parse(extractJson(plannerRaw)) as PlannerPlan
+
+    // 2) Designer
+    const designerMessages: ChatMessage[] = [
+      { role: 'system', content: DESIGN_OUTPUT_PROMPT },
+      { role: 'user', content: `User prompt: ${cleanedPrompt}\n\nPLAN (JSON):\n${JSON.stringify(plannerJson)}` }
+    ]
+    const designerRaw = await chat(designerMessages, 3000)
+    let designCandidate = JSON.parse(extractJson(designerRaw)) as DiagramData
+
+    // 3) Critic
+    const criticMessages: ChatMessage[] = [
+      { role: 'system', content: CRITIC_PROMPT },
+      { role: 'user', content: `User prompt: ${cleanedPrompt}\n\nPLAN (JSON):\n${JSON.stringify(plannerJson)}\n\nCANDIDATE DESIGN (JSON):\n${JSON.stringify(designCandidate)}` }
+    ]
+    const criticRaw = await chat(criticMessages, 1500)
+    const criticJson = JSON.parse(extractJson(criticRaw)) as CriticReport
+
+    // 4) Refiner (only if needed)
+    if (!criticJson.pass || (criticJson.issues && criticJson.issues.length > 0)) {
+      const refinerMessages: ChatMessage[] = [
+        { role: 'system', content: REFINER_PROMPT },
+        { role: 'user', content: `User prompt: ${cleanedPrompt}\n\nPLAN (JSON):\n${JSON.stringify(plannerJson)}\n\nCRITIC REPORT (JSON):\n${JSON.stringify(criticJson)}\n\nCURRENT DESIGN (JSON):\n${JSON.stringify(designCandidate)}` }
+      ]
+      const refinerRaw = await chat(refinerMessages, 3000)
+      designCandidate = JSON.parse(extractJson(refinerRaw)) as DiagramData
     }
 
-    return applyPatterns(diagram, patterns)
+    // Apply patterns at the end
+    return applyPatterns(designCandidate, patterns)
   } catch (error) {
     console.warn('AI service failed, falling back to mock data:', error)
-    // Fallback to mock data if AI service fails
     const { generateMockDiagram } = await import('./mockDiagramGenerator')
     return generateMockDiagram(cleanedPrompt)
   }

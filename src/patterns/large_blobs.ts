@@ -26,7 +26,30 @@ export const largeBlobsPattern: Pattern = {
   id: 'large-blobs',
   name: 'Handling Large Blobs',
   scope: 'Direct-to-object storage uploads with metadata stored separately from binary blobs.',
-  when_to_apply: ['upload', 'video', 'image', 'file > 10MB', 'media', 'documents', 'attachments', 'binary'],
+  when_to_apply: [
+    'upload',
+    'video',
+    'image',
+    'file > 10MB',
+    'media',
+    'documents',
+    'attachments',
+    'binary',
+    // Dropbox/drive style terms
+    'dropbox',
+    'google drive',
+    'gdrive',
+    'onedrive',
+    'one drive',
+    'box.com',
+    'box enterprise',
+    'cloud storage',
+    'file storage',
+    'file hosting',
+    'presigned url',
+    'presigned upload',
+    'presign'
+  ],
   major_functional_requirements: [
     'Generate presigned upload URL',
     'Direct client upload/download to blob storage',
@@ -52,10 +75,7 @@ export const largeBlobsPattern: Pattern = {
   ].join('\n'),
   diagram: largeBlobsDiagramData,
   detect: (prompt: string) => {
-    const heuristics = new RegExp(
-      largeBlobsPattern.when_to_apply.join('|'),
-      'i'
-    )
+    const heuristics = new RegExp(largeBlobsPattern.when_to_apply.join('|'), 'i')
     return heuristics.test(prompt)
   }
 }
