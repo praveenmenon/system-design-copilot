@@ -36,11 +36,14 @@ export interface SystemAnalysis {
   }
   challenges: {
     title: string
+    issueDetail: string
     solutions: {
-      type: 'bad' | 'good' | 'great'
       title: string
-      description: string
+      pros: string[]
+      cons: string[]
+      nfrImpact: string
     }[]
+    chosenSolution: string
     dataFlow?: string
   }[]
   tradeoffs: {

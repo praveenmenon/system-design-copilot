@@ -482,13 +482,36 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
       {analysis.challenges.map((challenge, index) => (
         <div key={index} className="challenge-item">
           <h3 className="challenge-title">{challenge.title}</h3>
+          <p className="challenge-detail">{challenge.issueDetail}</p>
           <div className="solutions">
             {challenge.solutions.map((solution, sIndex) => (
-              <div key={sIndex} className={`solution ${solution.type}`}>
+              <div key={sIndex} className="solution">
                 <h5>{solution.title}</h5>
-                <p>{solution.description}</p>
+                <div className="solution-details">
+                  <div className="pros">
+                    <strong>Pros:</strong>
+                    <ul>
+                      {solution.pros.map((pro, pIndex) => (
+                        <li key={pIndex}>{pro}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="cons">
+                    <strong>Cons:</strong>
+                    <ul>
+                      {solution.cons.map((con, cIndex) => (
+                        <li key={cIndex}>{con}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <p className="nfr-impact"><strong>NFR Impact:</strong> {solution.nfrImpact}</p>
               </div>
             ))}
+          </div>
+          <div className="chosen-solution">
+            <h5>Chosen Solution</h5>
+            <p>{challenge.chosenSolution}</p>
           </div>
           {challenge.dataFlow && (
             <div className="data-flow">
