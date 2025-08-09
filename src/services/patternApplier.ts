@@ -10,9 +10,16 @@ export function applyPatterns(base: DiagramData, patterns: Pattern[]): DiagramDa
   const included = allFrs.slice(0, 3)
 
   patterns.forEach(p => {
-    const pDiagram = p.diagram()
-    base.components.push(...pDiagram.components)
-    base.connections.push(...pDiagram.connections)
+    const pDiagram: any = p.diagram()
+    // Safely merge only if the pattern diagram conforms to DiagramData
+    if (pDiagram && Array.isArray(pDiagram.components) && Array.isArray(pDiagram.connections)) {
+      base.components.push(...pDiagram.components)
+      base.connections.push(...pDiagram.connections)
+    } else {
+      // Non-conforming pattern diagrams (e.g., raw Excalidraw scenes) are ignored for merging
+      // but analysis metadata below is still attached for transparency.
+      // console.warn(`Pattern diagram for ${p.id} is not in DiagramData format; skipping merge`)
+    }
 
     base.analysis ||= {
       requirements: { functional: [], nonFunctional: [], outOfScope: [] },

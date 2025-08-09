@@ -9,12 +9,14 @@ function App() {
   const [diagramData, setDiagramData] = useState<DiagramData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [currentView, setCurrentView] = useState<'canvas' | 'analysis' | 'split'>('canvas')
+  const [progress, setProgress] = useState<{ percent: number; message: string } | null>(null)
 
   const handleGenerateDiagram = async (prompt: string) => {
     setIsLoading(true)
+    setProgress({ percent: 5, message: 'Starting…' })
     try {
-      const { generateAIDiagram } = await import('./services/aiDiagramGenerator')
-      const diagram = await generateAIDiagram(prompt)
+      const { generateAIDiagramWithProgress } = await import('./services/aiDiagramGenerator')
+      const diagram = await generateAIDiagramWithProgress(prompt, (u) => setProgress({ percent: u.percent, message: u.message }))
       setDiagramData(diagram)
       setCurrentView('split') // Switch to split view when diagram is generated
     } catch (error) {
@@ -30,6 +32,7 @@ function App() {
       }
     } finally {
       setIsLoading(false)
+      setTimeout(() => setProgress(null), 1000)
     }
   }
 
@@ -45,6 +48,7 @@ function App() {
           <PromptInput 
             onGenerate={handleGenerateDiagram}
             isLoading={isLoading}
+            progress={progress}
           />
         </div>
         

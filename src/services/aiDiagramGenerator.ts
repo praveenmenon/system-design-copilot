@@ -411,12 +411,31 @@ interface CriticReport {
   mustFixSummary?: string
 }
 
-export const generateAIDiagram = async (prompt: string): Promise<DiagramData> => {
+export type GenerationStep =
+  | 'planner'
+  | 'designer'
+  | 'critic'
+  | 'refiner'
+  | 'patterns'
+  | 'complete'
+  | 'fallback'
+
+export interface ProgressUpdate {
+  step: GenerationStep
+  message: string
+  percent: number
+}
+
+export const generateAIDiagramWithProgress = async (
+  prompt: string,
+  onProgress?: (u: ProgressUpdate) => void
+): Promise<DiagramData> => {
   const patterns = selectPatterns(prompt)
   const cleanedPrompt = stripPatternFlags(prompt)
 
   try {
     // 1) Planner
+    onProgress?.({ step: 'planner', message: 'Planning requirements and scope…', percent: 10 })
     const plannerMessages: ChatMessage[] = [
       { role: 'system', content: PLANNER_PROMPT },
       { role: 'user', content: `User prompt: ${cleanedPrompt}` }
@@ -425,6 +444,7 @@ export const generateAIDiagram = async (prompt: string): Promise<DiagramData> =>
     const plannerJson = JSON.parse(extractJson(plannerRaw)) as PlannerPlan
 
     // 2) Designer
+    onProgress?.({ step: 'designer', message: 'Designing architecture and analysis…', percent: 40 })
     const designerMessages: ChatMessage[] = [
       { role: 'system', content: DESIGN_OUTPUT_PROMPT },
       { role: 'user', content: `User prompt: ${cleanedPrompt}\n\nPLAN (JSON):\n${JSON.stringify(plannerJson)}` }
@@ -433,6 +453,7 @@ export const generateAIDiagram = async (prompt: string): Promise<DiagramData> =>
     let designCandidate = JSON.parse(extractJson(designerRaw)) as DiagramData
 
     // 3) Critic
+    onProgress?.({ step: 'critic', message: 'Reviewing design for gaps and issues…', percent: 60 })
     const criticMessages: ChatMessage[] = [
       { role: 'system', content: CRITIC_PROMPT },
       { role: 'user', content: `User prompt: ${cleanedPrompt}\n\nPLAN (JSON):\n${JSON.stringify(plannerJson)}\n\nCANDIDATE DESIGN (JSON):\n${JSON.stringify(designCandidate)}` }
@@ -442,6 +463,7 @@ export const generateAIDiagram = async (prompt: string): Promise<DiagramData> =>
 
     // 4) Refiner (only if needed)
     if (!criticJson.pass || (criticJson.issues && criticJson.issues.length > 0)) {
+      onProgress?.({ step: 'refiner', message: 'Applying critic feedback and refining…', percent: 80 })
       const refinerMessages: ChatMessage[] = [
         { role: 'system', content: REFINER_PROMPT },
         { role: 'user', content: `User prompt: ${cleanedPrompt}\n\nPLAN (JSON):\n${JSON.stringify(plannerJson)}\n\nCRITIC REPORT (JSON):\n${JSON.stringify(criticJson)}\n\nCURRENT DESIGN (JSON):\n${JSON.stringify(designCandidate)}` }
@@ -451,10 +473,20 @@ export const generateAIDiagram = async (prompt: string): Promise<DiagramData> =>
     }
 
     // Apply patterns at the end
-    return applyPatterns(designCandidate, patterns)
+    onProgress?.({ step: 'patterns', message: 'Applying detected patterns…', percent: 90 })
+    const result = applyPatterns(designCandidate, patterns)
+    onProgress?.({ step: 'complete', message: 'Done', percent: 100 })
+    return result
   } catch (error) {
     console.warn('AI service failed, falling back to mock data:', error)
+    onProgress?.({ step: 'fallback', message: 'AI unavailable. Using mock template…', percent: 95 })
     const { generateMockDiagram } = await import('./mockDiagramGenerator')
-    return generateMockDiagram(cleanedPrompt)
+    const mock = await generateMockDiagram(cleanedPrompt)
+    onProgress?.({ step: 'complete', message: 'Done', percent: 100 })
+    return mock
   }
 }
+
+// Backwards-compatible API
+export const generateAIDiagram = async (prompt: string): Promise<DiagramData> =>
+  generateAIDiagramWithProgress(prompt)

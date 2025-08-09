@@ -5,9 +5,10 @@ import './PromptInput.css'
 interface PromptInputProps {
   onGenerate: (prompt: string) => void
   isLoading: boolean
+  progress?: { percent: number; message: string } | null
 }
 
-const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
+const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading, progress }) => {
   const [prompt, setPrompt] = useState('')
   const [detected, setDetected] = useState(false)
 
@@ -51,6 +52,24 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
           </button>
         </div>
       </form>
+      {isLoading && progress && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ height: 8, background: '#e9ecef', borderRadius: 4 }}>
+            <div
+              style={{
+                width: `${Math.min(100, Math.max(0, progress.percent))}%`,
+                height: '100%',
+                background: '#007bff',
+                borderRadius: 4,
+                transition: 'width 200ms ease'
+              }}
+            />
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, color: '#555' }}>
+            {progress.message}
+          </div>
+        </div>
+      )}
       
       <div className="pattern-controls">
         {detected && <span className="pattern-badge">Large Blobs detected</span>}
