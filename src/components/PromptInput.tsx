@@ -9,7 +9,6 @@ interface PromptInputProps {
 
 const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
   const [prompt, setPrompt] = useState('')
-  const [includeLargeBlobs, setIncludeLargeBlobs] = useState(false)
   const [detected, setDetected] = useState(false)
 
   useEffect(() => {
@@ -19,11 +18,7 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && !isLoading) {
-      let finalPrompt = prompt.trim()
-      if (includeLargeBlobs) {
-        finalPrompt += ' --pattern=large-blobs'
-      }
-      onGenerate(finalPrompt)
+      onGenerate(prompt.trim())
     }
   }
 
@@ -58,15 +53,6 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isLoading }) => {
       </form>
       
       <div className="pattern-controls">
-        <label>
-          <input
-            type="checkbox"
-            checked={includeLargeBlobs}
-            onChange={(e) => setIncludeLargeBlobs(e.target.checked)}
-            disabled={isLoading}
-          />
-          Include Large Blobs pattern
-        </label>
         {detected && <span className="pattern-badge">Large Blobs detected</span>}
       </div>
 
