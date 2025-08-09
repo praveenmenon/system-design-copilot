@@ -12,4 +12,5 @@ export interface Pattern {
   db_schema_md: string
   rationale_md: string
   diagram: () => DiagramData
+  detect: (prompt: string) => boolean
 }

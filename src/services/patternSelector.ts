@@ -1,16 +1,17 @@
-import { largeBlobsPattern } from '../patterns/large_blobs'
 import type { Pattern } from '../patterns/types'
+import { patternRegistry } from '../patterns'
 
-const heuristics = new RegExp(largeBlobsPattern.when_to_apply.join('|'), 'i')
-
-export function selectPatterns(prompt: string): Pattern[] {
-  const patterns: Pattern[] = []
-  if (prompt.includes('--pattern=large-blobs') || heuristics.test(prompt)) {
-    patterns.push(largeBlobsPattern)
-  }
-  return patterns
+function extractPatternFlags(prompt: string): string[] {
+  const match = prompt.match(/--patterns?=([^\s]+)/)
+  return match ? match[1].split(',') : []
 }
 
 export function stripPatternFlags(prompt: string): string {
-  return prompt.replace(/--pattern=[^\s]+/g, '').trim()
+  return prompt.replace(/--patterns?=[^\s]+/g, '').trim()
+}
+
+export function selectPatterns(prompt: string): Pattern[] {
+  const flags = extractPatternFlags(prompt)
+  const cleaned = stripPatternFlags(prompt)
+  return patternRegistry.filter(p => flags.includes(p.id) || p.detect(cleaned))
 }

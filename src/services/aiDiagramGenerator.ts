@@ -1,5 +1,6 @@
 import type { DiagramData } from '../types/diagram'
 import { selectPatterns, stripPatternFlags } from './patternSelector'
+import { applyPatterns } from './patternApplier'
 
 const SYSTEM_PROMPT = `You are a system architecture expert. When given a system design prompt, you must respond with ONLY a valid JSON object that describes the system architecture and comprehensive analysis.
 
@@ -376,37 +377,7 @@ export const generateAIDiagram = async (prompt: string): Promise<DiagramData> =>
       diagram = await callOpenAI(cleanedPrompt)
     }
 
-    patterns.forEach(p => {
-      const pDiagram = p.diagram()
-      diagram.components.push(...pDiagram.components)
-      diagram.connections.push(...pDiagram.connections)
-
-      diagram.analysis ||= {
-        requirements: { functional: [], nonFunctional: [], outOfScope: [] },
-        capacity: { dau: '', peakQps: '', storage: '', bandwidth: '' },
-        apis: [],
-        database: { choice: '', rationale: '' },
-        challenges: [],
-        tradeoffs: { summary: '' }
-      }
-
-      diagram.analysis.patterns = [
-        ...(diagram.analysis.patterns || []),
-        {
-          id: p.id,
-          name: p.name,
-          scope: p.scope,
-          majorFunctionalRequirements: p.major_functional_requirements.slice(0, 3),
-          outOfScope: p.out_of_scope,
-          nonFunctionalRequirements: p.non_functional_requirements,
-          coreEntities: p.core_entities,
-          dbSchemaMd: p.db_schema_md,
-          rationaleMd: p.rationale_md
-        }
-      ]
-    })
-
-    return diagram
+    return applyPatterns(diagram, patterns)
   } catch (error) {
     console.warn('AI service failed, falling back to mock data:', error)
     // Fallback to mock data if AI service fails

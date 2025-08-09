@@ -50,5 +50,12 @@ export const largeBlobsPattern: Pattern = {
     '- Async malware scanning to protect users',
     '- Metadata stored separately from blobs'
   ].join('\n'),
-  diagram: largeBlobsDiagramData
+  diagram: largeBlobsDiagramData,
+  detect: (prompt: string) => {
+    const heuristics = new RegExp(
+      largeBlobsPattern.when_to_apply.join('|'),
+      'i'
+    )
+    return heuristics.test(prompt)
+  }
 }
