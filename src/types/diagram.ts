@@ -34,6 +34,23 @@ export interface SystemAnalysis {
     rationale: string
     schema?: string
   }
+  enhancements: {
+    caching: {
+      dataCached: string
+      keyFormat: string
+      ttl: string
+      invalidation: string
+    }
+    queues: {
+      purpose: string
+      workflow: string
+    }
+    search: {
+      engine: string
+      indexedFields: string[]
+      resultCaching: string
+    }
+  }
   challenges: {
     title: string
     issueDetail: string

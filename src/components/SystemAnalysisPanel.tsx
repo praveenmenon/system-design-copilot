@@ -6,13 +6,21 @@ interface SystemAnalysisPanelProps {
   diagramData: any | null
 }
 
-type SectionKey = 'requirements' | 'capacity' | 'apis' | 'database' | 'challenges' | 'tradeoffs'
+type SectionKey =
+  | 'requirements'
+  | 'capacity'
+  | 'apis'
+  | 'database'
+  | 'enhancements'
+  | 'challenges'
+  | 'tradeoffs'
 
 const sections = [
   { key: 'requirements' as SectionKey, label: 'Requirements', icon: '📋' },
   { key: 'capacity' as SectionKey, label: 'Capacity', icon: '📊' },
   { key: 'apis' as SectionKey, label: 'APIs', icon: '🔌' },
   { key: 'database' as SectionKey, label: 'Database', icon: '🗄️' },
+  { key: 'enhancements' as SectionKey, label: 'Enhancements', icon: '✨' },
   { key: 'challenges' as SectionKey, label: 'Challenges', icon: '⚡' },
   { key: 'tradeoffs' as SectionKey, label: 'Trade-offs', icon: '⚖️' }
 ]
@@ -477,6 +485,54 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
     )
   }
 
+  const renderEnhancements = () => {
+    if (!analysis.enhancements) {
+      return <div className="section-content">No enhancement data</div>
+    }
+    const { caching, queues, search } = analysis.enhancements
+    return (
+      <div className="section-content">
+        <div className="subsection">
+          <h4>Caching</h4>
+          <p>
+            <strong>Data Cached:</strong> {caching.dataCached}
+          </p>
+          <p>
+            <strong>Key Format:</strong> {caching.keyFormat}
+          </p>
+          <p>
+            <strong>TTL:</strong> {caching.ttl}
+          </p>
+          <p>
+            <strong>Invalidation:</strong> {caching.invalidation}
+          </p>
+        </div>
+        <div className="subsection">
+          <h4>Queues</h4>
+          <p>
+            <strong>Purpose:</strong> {queues.purpose}
+          </p>
+          <p>
+            <strong>Workflow:</strong> {queues.workflow}
+          </p>
+        </div>
+        <div className="subsection">
+          <h4>Search</h4>
+          <p>
+            <strong>Engine:</strong> {search.engine}
+          </p>
+          <p>
+            <strong>Indexed Fields:</strong>{' '}
+            {search.indexedFields.join(', ')}
+          </p>
+          <p>
+            <strong>Result Caching:</strong> {search.resultCaching}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const renderChallenges = () => (
     <div className="section-content">
       {analysis.challenges.map((challenge, index) => (
@@ -543,6 +599,8 @@ export default function SystemAnalysisPanel({ diagramData }: SystemAnalysisPanel
         return renderApis()
       case 'database':
         return renderDatabase()
+      case 'enhancements':
+        return renderEnhancements()
       case 'challenges':
         return renderChallenges()
       case 'tradeoffs':
