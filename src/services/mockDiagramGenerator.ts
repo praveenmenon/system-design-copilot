@@ -315,7 +315,23 @@ const analysisTemplates = {
       rationale: "PostgreSQL for user data and room metadata, Redis for real-time presence and caching, MongoDB for message storage due to flexible schema and horizontal scaling",
       schema: `Users: {id, username, email, password_hash, created_at}\nRooms: {id, name, type, created_by, created_at}\nMessages: {id, room_id, user_id, content, timestamp, message_type}`
     },
-    
+    enhancements: {
+      caching: {
+        dataCached: 'User sessions and recent messages',
+        keyFormat: 'session:{userId}',
+        ttl: '24 hours',
+        invalidation: 'On logout or message edit'
+      },
+      queues: {
+        purpose: 'Message fan-out and background jobs',
+        workflow: 'Chat service publishes to Kafka; consumers persist and notify'
+      },
+      search: {
+        engine: 'Elasticsearch',
+        indexedFields: ['messages.content', 'users.username'],
+        resultCaching: 'Popular queries cached for 5 minutes'
+      }
+    },
 
     challenges: [
       {
@@ -563,7 +579,23 @@ const analysisTemplates = {
       rationale: "NoSQL for horizontal scaling and fast key-value lookups, Redis for caching frequently accessed URLs and reducing database load",
       schema: `URLs: {short_code, original_url, created_at, expires_at, click_count}\nAnalytics: {short_code, timestamp, ip_address, user_agent, referrer}`
     },
-
+    enhancements: {
+      caching: {
+        dataCached: 'Short URL lookups',
+        keyFormat: 'url:{shortCode}',
+        ttl: '30 days',
+        invalidation: 'On URL update or expiration'
+      },
+      queues: {
+        purpose: 'Click analytics processing',
+        workflow: 'API publishes events to queue; workers aggregate statistics'
+      },
+      search: {
+        engine: 'Elasticsearch',
+        indexedFields: ['originalUrl', 'shortCode'],
+        resultCaching: 'Frequent analytics queries cached for 1 hour'
+      }
+    },
 
     challenges: [
       {
@@ -610,6 +642,7 @@ const componentTemplates = {
       { id: 'notification', type: 'notification-service', label: 'Push Service', x: 650, y: 350, details: 'FCM/APNS' },
       { id: 'cache', type: 'cache', label: 'Redis Cache', x: 850, y: 150, details: 'Session Store' },
       { id: 'queue', type: 'queue', label: 'Message Queue', x: 850, y: 300, details: 'Apache Kafka' },
+      { id: 'search', type: 'service', label: 'Search Service', x: 850, y: 50, details: 'Elasticsearch' },
       { id: 'db', type: 'database', label: 'PostgreSQL', x: 1050, y: 225, details: 'Chat History' }
     ],
     connections: [
@@ -621,6 +654,8 @@ const componentTemplates = {
       { from: 'chat', to: 'cache', label: 'Redis Protocol' },
       { from: 'chat', to: 'queue', label: 'Kafka Protocol' },
       { from: 'chat', to: 'notification', label: 'gRPC' },
+      { from: 'chat', to: 'search', label: 'Index' },
+      { from: 'gateway', to: 'search', label: 'HTTP' },
       { from: 'queue', to: 'db', label: 'SQL' }
     ],
     analysis: {
@@ -698,7 +733,9 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { id: 'web', type: 'web-server', label: 'Web Servers', x: 620, y: 250 },
       { id: 'api', type: 'api-server', label: 'URL Service', x: 620, y: 400 },
       { id: 'cache', type: 'cache', label: 'Redis Cache', x: 920, y: 200 },
-      { id: 'db', type: 'database', label: 'URL Database', x: 920, y: 400 }
+      { id: 'db', type: 'database', label: 'URL Database', x: 920, y: 400 },
+      { id: 'search', type: 'service', label: 'Search Service', x: 1220, y: 200 },
+      { id: 'queue', type: 'queue', label: 'Analytics Queue', x: 1220, y: 400 }
     ],
     connections: [
       { from: 'user', to: 'cdn' },
@@ -706,7 +743,10 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { from: 'lb', to: 'web' },
       { from: 'web', to: 'api' },
       { from: 'api', to: 'cache' },
-      { from: 'api', to: 'db' }
+      { from: 'api', to: 'db' },
+      { from: 'api', to: 'queue' },
+      { from: 'queue', to: 'search' },
+      { from: 'search', to: 'db' }
     ]
   },
   'social-media': {
@@ -720,6 +760,7 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { id: 'user-service', type: 'service', label: 'User Service', x: 920, y: 550 },
       { id: 'cache', type: 'cache', label: 'Redis Cache', x: 1220, y: 200 },
       { id: 'queue', type: 'queue', label: 'Message Queue', x: 1220, y: 400 },
+      { id: 'search', type: 'service', label: 'Search Service', x: 1220, y: 600 },
       { id: 'user-db', type: 'database', label: 'User DB', x: 1520, y: 300 },
       { id: 'post-db', type: 'database', label: 'Post DB', x: 1520, y: 500 }
     ],
@@ -733,7 +774,9 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { from: 'api', to: 'user-service' },
       { from: 'post-service', to: 'queue' },
       { from: 'post-service', to: 'post-db' },
-      { from: 'user-service', to: 'user-db' }
+      { from: 'user-service', to: 'user-db' },
+      { from: 'api', to: 'search' },
+      { from: 'post-service', to: 'search', label: 'Index' }
     ]
   },
   'e-commerce': {
@@ -747,6 +790,7 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { id: 'payment-api', type: 'api-server', label: 'Payment API', x: 920, y: 600 },
       { id: 'cache', type: 'cache', label: 'Redis Cache', x: 1220, y: 250 },
       { id: 'search', type: 'service', label: 'Search Engine', x: 620, y: 600 },
+      { id: 'queue', type: 'queue', label: 'Order Queue', x: 1220, y: 450 },
       { id: 'product-db', type: 'database', label: 'Product DB', x: 1520, y: 200 },
       { id: 'order-db', type: 'database', label: 'Order DB', x: 1520, y: 400 },
       { id: 'user-db', type: 'database', label: 'User DB', x: 1520, y: 600 }
@@ -761,6 +805,8 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { from: 'web', to: 'search' },
       { from: 'product-api', to: 'cache' },
       { from: 'product-api', to: 'product-db' },
+      { from: 'order-api', to: 'queue' },
+      { from: 'queue', to: 'order-db' },
       { from: 'order-api', to: 'order-db' },
       { from: 'payment-api', to: 'user-db' }
     ]
@@ -776,6 +822,7 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { id: 'transcode', type: 'service', label: 'Transcoding', x: 500, y: 300 },
       { id: 'cache', type: 'cache', label: 'Redis Cache', x: 650, y: 150 },
       { id: 'queue', type: 'queue', label: 'Processing Queue', x: 650, y: 300 },
+      { id: 'search', type: 'service', label: 'Search Service', x: 650, y: 50 },
       { id: 'metadata-db', type: 'database', label: 'Metadata DB', x: 800, y: 150 },
       { id: 'blob-storage', type: 'database', label: 'Blob Storage', x: 800, y: 300 }
     ],
@@ -789,7 +836,9 @@ Participants: room_id (FK), user_id (FK), joined_at, COMPOSITE PK (room_id, user
       { from: 'upload-service', to: 'queue' },
       { from: 'queue', to: 'transcode' },
       { from: 'transcode', to: 'blob-storage' },
-      { from: 'video-api', to: 'metadata-db' }
+      { from: 'video-api', to: 'metadata-db' },
+      { from: 'video-api', to: 'search' },
+      { from: 'search', to: 'metadata-db', label: 'Index' }
     ]
   }
 }
